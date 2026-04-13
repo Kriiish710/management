@@ -12,6 +12,9 @@ import './models/Inventory.js'
 import './models/Sale.js'
 import './models/PL.js'
 import './models/Contact.js'
+import './models/Transaction.js'
+import './models/Status.js'
+import './models/PaymentStatus.js'
 
 // Routes
 import diamondRoutes from './routes/diamondRoutes.js'
@@ -22,6 +25,9 @@ import inventoryRoutes from './routes/inventoryRoutes.js'
 import saleRoutes from './routes/saleRoutes.js'
 import plRoutes from './routes/plRoutes.js'
 import contactRoutes from './routes/contactRoutes.js'
+import transactionRoutes from './routes/transactionRoutes.js'
+import statusRoutes from './routes/statusRoutes.js'
+import paymentStatusRoutes from './routes/paymentStatusRoutes.js'
 
 dotenv.config()
 
@@ -38,6 +44,10 @@ app.use('/api/inventory', inventoryRoutes)
 app.use('/api/sales', saleRoutes)
 app.use('/api/pl', plRoutes)
 app.use('/api/contacts', contactRoutes)
+app.use('/api/statuses', statusRoutes)
+app.use('/api/payment-statuses', paymentStatusRoutes)
+app.use('/api/transactions', transactionRoutes)
+
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('✅ MongoDB connected!'))

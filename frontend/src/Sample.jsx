@@ -1,645 +1,646 @@
 import { useState, useRef, useEffect } from "react";
 import * as XLSX from "https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs";
+import CreateTransactionModal from "./forms/CreateTransactionModal";
+import EditTransactionModal from "./forms/EditTransactionModal";
+
+const API = "http://localhost:5000/api";
+
+const fontLink = document.createElement("link");
+fontLink.rel = "stylesheet";
+fontLink.href = "https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap";
+document.head.appendChild(fontLink);
 
 const COLUMNS = [
-  { key: "Shipping no", label: "Shipping No", width: "w-28", type: "text" },
-  { key: "SKU no.", label: "SKU No.", width: "w-24", type: "text" },
-  { key: "Currier", label: "Courier", width: "w-28", type: "text" },
-  { key: "Supplier", label: "Supplier", width: "w-28", type: "text" },
-  { key: "Buyer", label: "Buyer", width: "w-28", type: "text" },
-  { key: "Date of purchase", label: "Date of Purchase", width: "w-32", type: "date" },
-  { key: "Shape", label: "Shape", width: "w-24", type: "text" },
-  { key: "Waight", label: "Weight (ct)", width: "w-24", type: "number", dependencies: ["Price per ct. USD", "Price (USD)", "Price per ct"] },
-  { key: "Number Of Certy", label: "Cert. No.", width: "w-28", type: "text" },
-  { key: "Price per ct. USD", label: "Price/ct (USD)", width: "w-28", type: "number", dependencies: ["Waight", "GST %", "Buy price total"] },
-  { key: "GST %", label: "GST %", width: "w-20", type: "number", dependencies: ["Buy price total", "GST amount"] },
-  { key: "GST amount", label: "GST Amt", width: "w-24", type: "number", readOnly: true },
-  { key: "Buy price total", label: "Buy Price Total", width: "w-28", type: "number", readOnly: true },
-  { key: "Currency", label: "Currency", width: "w-22", type: "text" },
-  { key: "Rate", label: "Rate", width: "w-20", type: "number", dependencies: ["Based currency INR", "Actual price INR"] },
-  { key: "Based currency INR", label: "Base (INR)", width: "w-28", type: "number", readOnly: true },
-  { key: "Correction price USD", label: "Correction (USD)", width: "w-28", type: "number" },
-  { key: "Actual rate", label: "Actual Rate", width: "w-24", type: "number" },
-  { key: "Actual price  INR", label: "Actual Price (INR)", width: "w-32", type: "number", readOnly: true },
-  { key: "Market P/L", label: "Market P/L", width: "w-24", type: "number", readOnly: true },
-  { key: "Mark up", label: "Mark Up", width: "w-20", type: "number", dependencies: ["Sell price local currency"] },
-  { key: "Sell price local currency", label: "Sell Price (Local)", width: "w-32", type: "number" },
-  { key: "Local currency", label: "Local Currency", width: "w-28", type: "text" },
-  { key: "Type of exchange", label: "Exchange Type", width: "w-28", type: "text" },
-  { key: "Payment status", label: "Payment Status", width: "w-28", type: "select", options: ["Paid", "Pending"] },
-  { key: "Status", label: "Status", width: "w-24", type: "select", options: ["In Stock", "Sold", "Pending"] },
-  { key: "Wirehouse", label: "Warehouse", width: "w-24", type: "text" },
-  { key: "Inventory date", label: "Inventory Date", width: "w-28", type: "date" },
-  { key: "Inventory manager", label: "Inv. Manager", width: "w-28", type: "text" },
-  { key: "Inventory history", label: "Inv. History", width: "w-28", type: "text" },
-  { key: "Синтез", label: "Synthesis", width: "w-24", type: "text" },
-  { key: "Cut", label: "Cut", width: "w-24", type: "text" },
-  { key: "Ct", label: "Ct", width: "w-16", type: "number" },
-  { key: "Colour", label: "Colour", width: "w-20", type: "text" },
-  { key: "Clarity", label: "Clarity", width: "w-20", type: "text" },
-  { key: "Price (RUB)", label: "Price (RUB)", width: "w-24", type: "number" },
-  { key: "Price (USD)", label: "Price (USD)", width: "w-24", type: "number", readOnly: true },
-  { key: "Price per ct", label: "Price/ct", width: "w-24", type: "number", readOnly: true },
-  { key: "Rate.1", label: "Rate", width: "w-20", type: "number" },
-  { key: "Location", label: "Location", width: "w-24", type: "text" },
-  { key: "Laboratory", label: "Laboratory", width: "w-24", type: "text" },
-  { key: "Sertificate", label: "Certificate", width: "w-28", type: "text" },
-  { key: "Mesurment", label: "Measurements", width: "w-32", type: "text" },
-  { key: "Date of sale", label: "Date of Sale", width: "w-28", type: "date" },
-  { key: "Buyer.1", label: "Final Buyer", width: "w-28", type: "text" },
-  { key: "Sale amount", label: "Sale Amount", width: "w-24", type: "number" },
-  { key: "Currency.1", label: "Sale Currency", width: "w-28", type: "text" },
-  { key: "Rate on dare of sale", label: "Rate on Sale", width: "w-28", type: "number" },
-  { key: "Base currency", label: "Base Currency", width: "w-28", type: "number" },
-  { key: "Base currency.1", label: "Base Currency 2", width: "w-28", type: "number" },
-  { key: "Marginality", label: "Marginality", width: "w-24", type: "number", readOnly: true },
-  { key: "Actual markup", label: "Actual Markup", width: "w-24", type: "number" },
-  { key: "Manager", label: "Manager", width: "w-24", type: "text" },
-  { key: "Bonus points", label: "Bonus Pts", width: "w-24", type: "number" },
-  { key: "Bonus amount", label: "Bonus Amt", width: "w-24", type: "number" },
-  { key: "Rate.2", label: "Rate", width: "w-20", type: "number" },
-  { key: "Bonus in local currency", label: "Bonus (Local)", width: "w-28", type: "number" },
+  { key: "shippingNo", label: "Shipping No", type: "text" },
+  { key: "skuNo", label: "SKU No.", type: "text" },
+  { key: "courier", label: "Courier", type: "text" },
+  { key: "supplier", label: "Supplier", type: "text" },
+  { key: "buyerAtSource", label: "Buyer", type: "text" },
+  { key: "dateOfPurchase", label: "Date of Purchase", type: "date" },
+  { key: "shape", label: "Shape", type: "text" },
+  { key: "weight", label: "Weight (ct)", type: "number" },
+  { key: "certificateNo", label: "Cert. No.", type: "text" },
+  { key: "pricePerCaratUSD", label: "Price/ct (USD)", type: "number" },
+  { key: "gstPercent", label: "GST %", type: "number" },
+  { key: "gstAmount", label: "GST Amt", type: "number", readOnly: true },
+  { key: "buyPriceTotal", label: "Buy Price Total", type: "number", readOnly: true },
+  { key: "purchaseCurrency", label: "Currency", type: "text" },
+  { key: "rateAtPurchase", label: "Rate (USD/INR)", type: "number", readOnly: true },
+  { key: "basePriceINR", label: "Base (INR)", type: "number", readOnly: true },
+  { key: "correctionPriceUSD", label: "Correction (USD)", type: "number" },
+  { key: "actualRate", label: "Actual Rate", type: "number" },
+  { key: "actualPriceINR", label: "Actual Price (INR)", type: "number", readOnly: true },
+  { key: "marketPL", label: "Market P/L", type: "number", readOnly: true },
+  { key: "markup", label: "Mark Up", type: "number" },
+  { key: "sellPriceLocalCurrency", label: "Sell Price (Local)", type: "number", readOnly: true },
+  { key: "localCurrency", label: "Local Currency", type: "text" },
+  { key: "typeOfExchange", label: "Bank", type: "bank" },
+  { key: "paymentStatus", label: "Payment Status", type: "paymentStatus" },
+  { key: "status", label: "Status", type: "status" },
+  { key: "warehouse", label: "Warehouse", type: "text" },
+  { key: "inventoryDate", label: "Inventory Date", type: "date" },
+  { key: "inventoryManager", label: "Inv. Manager", type: "text" },
+  { key: "synthesis", label: "Synthesis", type: "text" },
+  { key: "cut", label: "Cut", type: "text" },
+  { key: "carat", label: "Ct", type: "number" },
+  { key: "colour", label: "Colour", type: "text" },
+  { key: "clarity", label: "Clarity", type: "text" },
+  { key: "priceRUB", label: "Price (RUB)", type: "number", readOnly: true },
+  { key: "priceUSD", label: "Price (USD)", type: "number", readOnly: true },
+  { key: "pricePerCt", label: "Price/ct", type: "number", readOnly: true },
+  { key: "rateRUB", label: "Rate (USD/RUB)", type: "number", readOnly: true },
+  { key: "location", label: "Location", type: "text" },
+  { key: "laboratory", label: "Laboratory", type: "text" },
+  { key: "length", label: "Length (mm)", type: "number" },
+  { key: "width", label: "Width (mm)", type: "number" },
+  { key: "height", label: "Height (mm)", type: "number" },
+  { key: "dateOfSale", label: "Date of Sale", type: "date" },
+  { key: "buyerName", label: "Final Buyer", type: "text" },
+  { key: "saleAmount", label: "Sale Amount", type: "number" },
+  { key: "saleCurrency", label: "Sale Currency", type: "text" },
+  { key: "rateOnDateOfSale", label: "Rate on Sale", type: "number" },
+  { key: "saleBaseINR", label: "Base Currency (INR)", type: "number", readOnly: true },
+  { key: "marginality", label: "Marginality", type: "number", readOnly: true },
+  { key: "actualMarkup", label: "Actual Markup", type: "number", readOnly: true },
+  { key: "manager", label: "Manager", type: "text" },
+  { key: "bonusPoints", label: "Bonus Pts", type: "number" },
+  { key: "bonusAmount", label: "Bonus Amt", type: "number", readOnly: true },
+  { key: "bonusRate", label: "Rate (Bonus)", type: "number" },
+  { key: "bonusInLocalCurrency", label: "Bonus (Local)", type: "number", readOnly: true },
 ];
 
+function getLabel(value) {
+  if (!value) return "";
+  if (typeof value === "object" && value.label) return value.label;
+  if (typeof value === "object" && value.name) return value.name;
+  return String(value);
+}
+
 const STATUS_STYLES = {
-  "In Stock": "bg-emerald-50 text-emerald-700 border border-emerald-200",
-  Sold: "bg-blue-50 text-blue-700 border border-blue-200",
-  Pending: "bg-amber-50 text-amber-700 border border-amber-200",
-  default: "bg-slate-50 text-slate-600 border border-slate-200",
+  "In Stock": { bg: "#f0fdf4", color: "#16a34a", border: "#bbf7d0" },
+  "Sold": { bg: "#eff6ff", color: "#2563eb", border: "#bfdbfe" },
+  "Pending": { bg: "#fffbeb", color: "#d97706", border: "#fde68a" },
+  "Hold": { bg: "#faf5ff", color: "#7c3aed", border: "#e9d5ff" },
+  "Delivery": { bg: "#ecfeff", color: "#0891b2", border: "#a5f3fc" },
+  "Invoice": { bg: "#fdf2f8", color: "#db2777", border: "#fbcfe8" },
+  "Invoce": { bg: "#fdf2f8", color: "#db2777", border: "#fbcfe8" },
+  "Inventory": { bg: "#f8fafc", color: "#64748b", border: "#e2e8f0" },
+  "Stock": { bg: "#f0fdf4", color: "#16a34a", border: "#bbf7d0" },
+  "Local office": { bg: "#f0f9ff", color: "#0369a1", border: "#bae6fd" },
+  default: { bg: "#f8fafc", color: "#94a3b8", border: "#e2e8f0" },
 };
 
 const PAYMENT_STYLES = {
-  Paid: "bg-green-50 text-green-700 border border-green-200",
-  Pending: "bg-orange-50 text-orange-700 border border-orange-200",
-  default: "bg-slate-50 text-slate-500 border border-slate-200",
+  "Paid": { bg: "#f0fdf4", color: "#16a34a", border: "#bbf7d0" },
+  "Pending": { bg: "#fff7ed", color: "#ea580c", border: "#fed7aa" },
+  default: { bg: "#f8fafc", color: "#94a3b8", border: "#e2e8f0" },
 };
 
 function Badge({ value, styleMap }) {
-  if (!value) return <span className="text-slate-300">—</span>;
-  const cls = styleMap[value] || styleMap.default;
+  const label = getLabel(value);
+  if (!label) return <span className="text-slate-300">—</span>;
+  const s = styleMap[label] || styleMap.default;
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${cls}`}>
-      {value}
+    <span style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}` }}
+      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap">
+      {label}
     </span>
   );
 }
 
+const CURRENCY_KEYS = new Set([
+  "pricePerCaratUSD", "gstAmount", "buyPriceTotal", "basePriceINR",
+  "correctionPriceUSD", "actualPriceINR", "sellPriceLocalCurrency",
+  "priceRUB", "priceUSD", "saleAmount", "saleBaseINR",
+  "bonusAmount", "bonusInLocalCurrency", "marginality", "actualMarkup",
+]);
+
 function formatCell(key, value) {
   if (value === null || value === undefined || value === "") return <span className="text-slate-300">—</span>;
-
-  if (key === "Status") return <Badge value={value} styleMap={STATUS_STYLES} />;
-  if (key === "Payment status") return <Badge value={value} styleMap={PAYMENT_STYLES} />;
-
-  if (
-    typeof value === "number" &&
-    (key.toLowerCase().includes("price") ||
-      key.toLowerCase().includes("amount") ||
-      key.toLowerCase().includes("inr") ||
-      key.toLowerCase().includes("rub") ||
-      key.toLowerCase().includes("usd") ||
-      key === "GST amount" ||
-      key === "Based currency INR" ||
-      key === "Actual price  INR" ||
-      key === "Base currency" ||
-      key === "Base currency.1" ||
-      key === "Bonus amount" ||
-      key === "Bonus in local currency" ||
-      key === "Sale amount")
-  ) {
-    return (
-      <span className="font-mono text-slate-700">
-        {Number(value).toLocaleString("en-IN", { maximumFractionDigits: 2 })}
-      </span>
-    );
+  if (key === "status") return <Badge value={value} styleMap={STATUS_STYLES} />;
+  if (key === "paymentStatus") return <Badge value={value} styleMap={PAYMENT_STYLES} />;
+  if (key === "skuNo") return <span className="text-blue-600 font-medium text-xs">{String(value)}</span>;
+  if (key === "typeOfExchange") {
+    const name = typeof value === "object" ? (value.name || "—") : String(value);
+    return <span className="text-xs">{name || "—"}</span>;
   }
-
-  if (key === "Market P/L" && typeof value === "number") {
+  if (key === "marketPL" && typeof value === "number") {
     const pos = value >= 0;
-    return (
-      <span className={`font-mono font-medium ${pos ? "text-emerald-600" : "text-red-500"}`}>
-        {pos ? "+" : ""}
-        {Number(value).toLocaleString("en-IN", { maximumFractionDigits: 2 })}
-      </span>
-    );
+    return <span className={`font-semibold text-xs ${pos ? "text-green-600" : "text-red-600"}`}>
+      {pos ? "↑" : "↓"} {Math.abs(value).toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+    </span>;
   }
-
-  if (value instanceof Date) {
-    return <span>{value.toLocaleDateString("en-IN")}</span>;
-  }
-
-  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value)) {
-    return <span>{new Date(value).toLocaleDateString("en-IN")}</span>;
-  }
-
-  if (typeof value === "number") {
-    return <span className="font-mono text-slate-700">{Number(value).toLocaleString("en-IN", { maximumFractionDigits: 4 })}</span>;
-  }
-
-  return <span>{String(value)}</span>;
+  if (CURRENCY_KEYS.has(key) && typeof value === "number")
+    return <span className="tabular-nums text-xs">{value.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</span>;
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value))
+    return <span className="text-xs">{new Date(value).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>;
+  if (typeof value === "number")
+    return <span className="tabular-nums text-xs">{value.toLocaleString("en-IN", { maximumFractionDigits: 4 })}</span>;
+  if (typeof value === "object" && value.label) return <span className="text-xs">{value.label}</span>;
+  if (typeof value === "object" && value.name) return <span className="text-xs">{value.name}</span>;
+  return <span className="text-xs">{String(value)}</span>;
 }
 
-// Calculation functions
-const calculateValues = (data) => {
-  const newData = { ...data };
-  
-  // Calculate Buy Price Total = Weight * Price per ct. USD
-  if (newData["Waight"] && newData["Price per ct. USD"]) {
-    newData["Buy price total"] = newData["Waight"] * newData["Price per ct. USD"];
-  }
-  
-  // Calculate GST Amount = Buy Price Total * (GST % / 100)
-  if (newData["Buy price total"] && newData["GST %"]) {
-    newData["GST amount"] = newData["Buy price total"] * (newData["GST %"] / 100);
-  }
-  
-  // Calculate Based currency INR = Buy Price Total * Rate
-  if (newData["Buy price total"] && newData["Rate"]) {
-    newData["Based currency INR"] = newData["Buy price total"] * newData["Rate"];
-  }
-  
-  // Calculate Actual price INR = Based currency INR + Correction price USD * Rate
-  if (newData["Based currency INR"] && newData["Correction price USD"] && newData["Rate"]) {
-    newData["Actual price  INR"] = newData["Based currency INR"] + (newData["Correction price USD"] * newData["Rate"]);
-  } else if (newData["Based currency INR"]) {
-    newData["Actual price  INR"] = newData["Based currency INR"];
-  }
-  
-  // Calculate Price (USD) = Weight * Price per ct
-  if (newData["Waight"] && newData["Price per ct"]) {
-    newData["Price (USD)"] = newData["Waight"] * newData["Price per ct"];
-  }
-  
-  // Calculate Market P/L = Actual price INR - Based currency INR
-  if (newData["Actual price  INR"] && newData["Based currency INR"]) {
-    newData["Market P/L"] = newData["Actual price  INR"] - newData["Based currency INR"];
-  }
-  
-  // Calculate Sell price local currency = Buy price total * (1 + Mark up / 100)
-  if (newData["Buy price total"] && newData["Mark up"]) {
-    newData["Sell price local currency"] = newData["Buy price total"] * (1 + newData["Mark up"] / 100);
-  }
-  
-  // Calculate Marginality = (Sell price local currency - Buy price total) / Buy price total * 100
-  if (newData["Sell price local currency"] && newData["Buy price total"] && newData["Buy price total"] !== 0) {
-    newData["Marginality"] = ((newData["Sell price local currency"] - newData["Buy price total"]) / newData["Buy price total"]) * 100;
-  }
-  
-  return newData;
-};
+function isMeasurementString(str) {
+  if (!str || typeof str !== "string") return false;
+  return /^[\d.]+\s*[*×xX]\s*[\d.]+\s*[*×xX]\s*[\d.]+$/.test(str.trim());
+}
 
-function EditModal({ diamond, index, onSave, onClose }) {
-  const [formData, setFormData] = useState(() => calculateValues({ ...diamond }));
-  const [activeTab, setActiveTab] = useState("general");
+function parseMeasurement(str) {
+  if (!str || typeof str !== "string") return {};
+  const parts = str.trim().split(/[*×xX]/).map(p => parseFloat(p.trim()));
+  const result = {};
+  if (parts.length >= 1 && !isNaN(parts[0])) result.length = parts[0];
+  if (parts.length >= 2 && !isNaN(parts[1])) result.width = parts[1];
+  if (parts.length >= 3 && !isNaN(parts[2])) result.height = parts[2];
+  return result;
+}
 
-  const handleChange = (key, value) => {
-    let updatedData = { ...formData, [key]: value };
-    
-    // Convert empty strings to null for numbers
-    COLUMNS.forEach(col => {
-      if (col.type === "number" && updatedData[col.key] === "") {
-        updatedData[col.key] = null;
-      }
-    });
-    
-    // Recalculate all dependent values
-    updatedData = calculateValues(updatedData);
-    setFormData(updatedData);
-  };
+function detectMeasurementColumnIndex(dataRows, fallback = 42) {
+  const samplesToCheck = dataRows.slice(0, 20);
+  for (let colIdx = 0; colIdx < 80; colIdx++) {
+    const hits = samplesToCheck.filter(row => isMeasurementString(String(row[colIdx] ?? "")));
+    if (hits.length > 0) return colIdx;
+  }
+  return fallback;
+}
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSave(index, formData);
-    onClose();
-  };
-
-  // Group columns for better organization
-  const generalColumns = COLUMNS.slice(0, 20);
-  const pricingColumns = COLUMNS.slice(20, 35);
-  const salesColumns = COLUMNS.slice(35, 45);
-  const additionalColumns = COLUMNS.slice(45);
-
-  const renderField = (col) => {
-    const value = formData[col.key] || "";
-    
-    if (col.type === "select") {
-      return (
-        <select
-          value={value}
-          onChange={(e) => handleChange(col.key, e.target.value)}
-          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent"
-        >
-          <option value="">Select {col.label}</option>
-          {col.options.map(opt => (
-            <option key={opt} value={opt}>{opt}</option>
-          ))}
-        </select>
-      );
-    }
-    
-    if (col.type === "date") {
-      const dateValue = value ? (value instanceof Date ? value.toISOString().split('T')[0] : value.split('T')[0]) : "";
-      return (
-        <input
-          type="date"
-          value={dateValue}
-          onChange={(e) => handleChange(col.key, e.target.value)}
-          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent"
-        />
-      );
-    }
-    
-    if (col.type === "number") {
-      return (
-        <input
-          type="number"
-          step="any"
-          value={value}
-          onChange={(e) => handleChange(col.key, e.target.value === "" ? null : parseFloat(e.target.value))}
-          readOnly={col.readOnly}
-          className={`w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent ${
-            col.readOnly ? "bg-slate-50 text-slate-600" : ""
-          }`}
-        />
-      );
-    }
-    
-    return (
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => handleChange(col.key, e.target.value)}
-        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent"
-      />
-    );
-  };
-
-  const renderColumnGroup = (columns, title) => (
-    <div className="mb-6">
-      <h3 className="text-md font-semibold text-slate-900 mb-3 pb-2 border-b border-slate-200">{title}</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {columns.map((col) => (
-          <div key={col.key} className="flex flex-col">
-            <label className="text-xs font-medium text-slate-600 mb-1">
-              {col.label}
-              {col.readOnly && <span className="ml-1 text-xs text-slate-400">(Auto)</span>}
-            </label>
-            {renderField(col)}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-
+// Drag handle SVG icon
+function DragHandle() {
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="flex items-center justify-between p-6 border-b border-slate-200">
-          <div>
-            <h2 className="text-xl font-semibold text-slate-900">Edit Diamond Details</h2>
-            <p className="text-sm text-slate-500 mt-1">
-              SKU: {formData["SKU no."] || "N/A"} | Weight: {formData["Waight"] || "N/A"} ct
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-          >
-            <svg className="w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Tabs */}
-        <div className="border-b border-slate-200 px-6">
-          <div className="flex gap-4">
-            {[
-              { id: "general", label: "General Information" },
-              { id: "pricing", label: "Pricing & Currency" },
-              { id: "sales", label: "Sales Information" },
-              { id: "additional", label: "Additional Details" },
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2 text-sm font-medium transition-colors relative ${
-                  activeTab === tab.id
-                    ? "text-slate-900"
-                    : "text-slate-500 hover:text-slate-700"
-                }`}
-              >
-                {tab.label}
-                {activeTab === tab.id && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-900"></div>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6">
-          {activeTab === "general" && renderColumnGroup(generalColumns, "General Information")}
-          {activeTab === "pricing" && renderColumnGroup(pricingColumns, "Pricing & Currency")}
-          {activeTab === "sales" && renderColumnGroup(salesColumns, "Sales Information")}
-          {activeTab === "additional" && renderColumnGroup(additionalColumns, "Additional Details")}
-          
-          {/* Summary Cards */}
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-slate-50 rounded-lg">
-            <div className="text-center">
-              <p className="text-xs text-slate-500 mb-1">Total Value (USD)</p>
-              <p className="text-lg font-semibold text-slate-900">
-                ${(formData["Buy price total"] || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
-              </p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs text-slate-500 mb-1">Total Value (INR)</p>
-              <p className="text-lg font-semibold text-slate-900">
-                ₹{(formData["Based currency INR"] || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-              </p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs text-slate-500 mb-1">Market P/L</p>
-              <p className={`text-lg font-semibold ${(formData["Market P/L"] || 0) >= 0 ? "text-emerald-600" : "text-red-600"}`}>
-                {(formData["Market P/L"] || 0) >= 0 ? "+" : ""}
-                ₹{(formData["Market P/L"] || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-              </p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs text-slate-500 mb-1">Marginality</p>
-              <p className="text-lg font-semibold text-slate-900">
-                {(formData["Marginality"] || 0).toFixed(2)}%
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-slate-200">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 text-sm font-medium text-white bg-slate-900 hover:bg-slate-700 rounded-lg transition-colors"
-            >
-              Save Changes
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <svg
+      width="10" height="14" viewBox="0 0 10 14" fill="currentColor"
+      style={{ opacity: 0.35, flexShrink: 0 }}
+    >
+      <circle cx="3" cy="2" r="1.2" /><circle cx="7" cy="2" r="1.2" />
+      <circle cx="3" cy="6" r="1.2" /><circle cx="7" cy="6" r="1.2" />
+      <circle cx="3" cy="10" r="1.2" /><circle cx="7" cy="10" r="1.2" />
+    </svg>
   );
 }
 
 export default function Sample() {
   const [rows, setRows] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [importing, setImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState({ done: 0, total: 0 });
   const [fileName, setFileName] = useState("");
   const [search, setSearch] = useState("");
-  const [editingDiamond, setEditingDiamond] = useState(null);
-  const [editingIndex, setEditingIndex] = useState(null);
+  const [editingRow, setEditingRow] = useState(null);
+  const [showCreate, setShowCreate] = useState(false);
+
+  // ── Draggable columns state ──────────────────────────────────────────────
+  const [columnOrder, setColumnOrder] = useState(() => COLUMNS.map(c => c.key));
+  const [dragOverKey, setDragOverKey] = useState(null);
+  const dragSrcKey = useRef(null);
+  // ────────────────────────────────────────────────────────────────────────
+
   const fileRef = useRef();
 
-  const parseExcel = async (file) => {
+  const orderedColumns = columnOrder.map(k => COLUMNS.find(c => c.key === k));
+
+  const fetchTransactions = async () => {
     setIsLoading(true);
-    setFileName(file.name);
-    const buffer = await file.arrayBuffer();
-    const wb = XLSX.read(buffer, { type: "array", cellDates: true });
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const data = XLSX.utils.sheet_to_json(ws, { defval: "" });
-    
-    // Apply calculations to all rows
-    const calculatedData = data.map(row => calculateValues(row));
-    setRows(calculatedData);
+    try {
+      const res = await fetch(`${API}/transactions`).then(r => r.json());
+      if (res.success) setRows(res.data);
+    } catch (e) { console.error(e); }
     setIsLoading(false);
   };
 
-  const handleFile = (file) => {
-    if (file && (file.name.endsWith(".xlsx") || file.name.endsWith(".xls"))) {
-      parseExcel(file);
+  useEffect(() => { fetchTransactions(); }, []);
+
+  const excelDateToJS = (val) => {
+    if (!val) return null;
+    if (val instanceof Date) return val;
+    if (typeof val === "number") return new Date(Math.round((val - 25569) * 86400 * 1000));
+    if (typeof val === "string" && val.trim() !== "") return new Date(val);
+    return null;
+  };
+
+  const fetchMappingsFresh = async () => {
+    let statusesList = [], paymentStatusesList = [];
+    try {
+      const [sRes, pRes] = await Promise.all([
+        fetch(`${API}/statuses/active`).then(r => r.json()),
+        fetch(`${API}/payment-statuses/active`).then(r => r.json()),
+      ]);
+      if (sRes.success) statusesList = sRes.data;
+      if (pRes.success) paymentStatusesList = pRes.data;
+    } catch (e) { console.error("Failed to fetch fresh mappings:", e); }
+    return { statusesList, paymentStatusesList };
+  };
+
+  const findId = (list, label) => {
+    if (!label || !list.length) return undefined;
+    const needle = String(label).trim().toLowerCase();
+    const exact = list.find(s => s.label.toLowerCase() === needle);
+    if (exact) return exact._id;
+    const partial = list.find(s => needle.includes(s.label.toLowerCase()) || s.label.toLowerCase().includes(needle));
+    if (partial) return partial._id;
+    return undefined;
+  };
+
+  const mapExcelRow = (row, statusesList, paymentStatusesList, measurementColIdx) => {
+    const n = (idx) => {
+      const v = row[idx];
+      if (v === undefined || v === null || v === "") return undefined;
+      if (typeof v === "string" && v.startsWith("=")) return undefined;
+      const num = Number(v);
+      return isNaN(num) ? undefined : num;
+    };
+    const s = (idx) => {
+      const v = row[idx];
+      if (v === undefined || v === null) return "";
+      if (typeof v === "string" && v.startsWith("=")) return "";
+      return String(v);
+    };
+
+    const statusId = findId(statusesList, s(25));
+    const paymentStatusId = findId(paymentStatusesList, s(24));
+    const measurements = parseMeasurement(s(measurementColIdx));
+
+    const result = {
+      shippingNo:         s(0),
+      skuNo:              s(1),
+      courier:            s(2),
+      supplier:           s(3),
+      buyerAtSource:      s(4),
+      dateOfPurchase:     excelDateToJS(row[5]),
+      shape:              s(6),
+      weight:             n(7),
+      certificateNo:      s(8),
+      pricePerCaratUSD:   n(9),
+      gstPercent:         n(10) ?? 0,
+      purchaseCurrency:   s(13) || "USD",
+      correctionPriceUSD: n(16),
+      actualRate:         n(17),
+      markup:             n(20),
+      localCurrency:      s(22),
+      typeOfExchange:     s(23),
+      warehouse:          s(26),
+      inventoryDate:      excelDateToJS(row[27]),
+      inventoryManager:   s(28),
+      synthesis:          s(30),
+      cut:                s(31),
+      carat:              n(32),
+      colour:             s(33),
+      clarity:            s(34),
+      location:           s(39),
+      laboratory:         s(40),
+      length:             measurements.length,
+      width:              measurements.width,
+      height:             measurements.height,
+      dateOfSale:         excelDateToJS(row[44]),
+      buyerName:          s(45),
+      saleAmount:         n(46),
+      saleCurrency:       s(47),
+      rateOnDateOfSale:   n(48),
+      manager:            s(53),
+      bonusPoints:        n(54),
+    };
+
+    if (statusId) result.status = statusId;
+    if (paymentStatusId) result.paymentStatus = paymentStatusId;
+
+    Object.keys(result).forEach(key => {
+      if (result[key] === undefined || result[key] === null || result[key] === "") {
+        delete result[key];
+      }
+    });
+
+    return result;
+  };
+
+  const parseExcel = async (file) => {
+    setImporting(true);
+    setFileName(file.name);
+    const { statusesList, paymentStatusesList } = await fetchMappingsFresh();
+    try {
+      const buffer = await file.arrayBuffer();
+      const wb = XLSX.read(buffer, {
+        type: "array",
+        cellDates: false,
+        raw: false,
+        cellFormula: false,
+      });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+      const dataRows = data.slice(1);
+      const validRows = dataRows.filter(row => row[1] && String(row[1]).trim() !== "");
+
+      if (validRows.length === 0) {
+        alert("No valid rows found with SKU numbers");
+        setImporting(false);
+        return;
+      }
+
+      const measurementColIdx = detectMeasurementColumnIndex(validRows);
+      console.log(`Measurements column auto-detected at index: ${measurementColIdx}`);
+
+      setImportProgress({ done: 0, total: validRows.length });
+      let successCount = 0, errorCount = 0;
+      const errors = [];
+
+      for (let i = 0; i < validRows.length; i++) {
+        try {
+          const mappedRow = mapExcelRow(validRows[i], statusesList, paymentStatusesList, measurementColIdx);
+          const response = await fetch(`${API}/transactions`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(mappedRow),
+          });
+          const responseData = await response.json();
+          if (response.ok && responseData.success) {
+            successCount++;
+          } else {
+            errorCount++;
+            errors.push(`Row ${i + 2} (${validRows[i][1]}): ${responseData.message || "Unknown error"}`);
+          }
+        } catch (e) {
+          errorCount++;
+          errors.push(`Row ${i + 2}: ${e.message}`);
+        }
+        setImportProgress({ done: i + 1, total: validRows.length });
+      }
+
+      let message = `Import completed!\n✅ Success: ${successCount}\n❌ Failed: ${errorCount}`;
+      if (errors.length > 0) {
+        message += `\n\nErrors:\n${errors.slice(0, 5).join("\n")}`;
+        if (errors.length > 5) message += `\n... and ${errors.length - 5} more`;
+      }
+      alert(message);
+    } catch (error) {
+      console.error("Import error:", error);
+      alert("Failed to import file: " + error.message);
+    } finally {
+      setImporting(false);
+      await fetchTransactions();
     }
   };
 
-  const handleRowClick = (row, index) => {
-    setEditingDiamond(row);
-    setEditingIndex(index);
+  const handleFile = (file) => {
+    if (file && (file.name.endsWith(".xlsx") || file.name.endsWith(".xls"))) parseExcel(file);
+    else alert("Please select an Excel file (.xlsx or .xls)");
   };
 
-  const handleSave = (index, updatedDiamond) => {
-    const newRows = [...rows];
-    newRows[index] = calculateValues(updatedDiamond);
-    setRows(newRows);
+  const handleEditSave = (updated) => setRows(prev => prev.map(r => r._id === updated._id ? updated : r));
+  const handleCreateSave = (created, banksList) => {
+    const patched = { ...created };
+    if (patched.typeOfExchange && typeof patched.typeOfExchange === "string") {
+      const match = banksList.find(b => b._id === patched.typeOfExchange);
+      if (match) patched.typeOfExchange = match;
+    }
+    setRows(prev => [patched, ...prev]);
   };
 
-  const filtered = rows.filter((row) =>
-    search
-      ? COLUMNS.some((col) => String(row[col.key] ?? "").toLowerCase().includes(search.toLowerCase()))
-      : true
+  const filtered = rows.filter(row =>
+    search ? COLUMNS.some(col => String(getLabel(row[col.key]) ?? "").toLowerCase().includes(search.toLowerCase())) : true
   );
 
+  // ── Column drag handlers ─────────────────────────────────────────────────
+  const handleColDragStart = (e, key) => {
+    dragSrcKey.current = key;
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleColDragOver = (e, key) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (key !== dragSrcKey.current) setDragOverKey(key);
+  };
+
+  const handleColDragLeave = () => {
+    setDragOverKey(null);
+  };
+
+  const handleColDrop = (e, targetKey) => {
+    e.preventDefault();
+    const srcKey = dragSrcKey.current;
+    if (!srcKey || srcKey === targetKey) {
+      setDragOverKey(null);
+      return;
+    }
+    setColumnOrder(prev => {
+      const next = [...prev];
+      const from = next.indexOf(srcKey);
+      const to = next.indexOf(targetKey);
+      next.splice(from, 1);
+      next.splice(to, 0, srcKey);
+      return next;
+    });
+    dragSrcKey.current = null;
+    setDragOverKey(null);
+  };
+
+  const handleColDragEnd = () => {
+    dragSrcKey.current = null;
+    setDragOverKey(null);
+  };
+  // ────────────────────────────────────────────────────────────────────────
+
   return (
-    <div className="min-h-screen bg-slate-50 font-sans">
+    <div className="min-h-screen bg-slate-50 font-[DM_Sans,sans-serif]">
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-30 shadow-sm">
+      <div className="bg-white border-b border-slate-200 px-7 flex items-center justify-between h-[60px] sticky top-0 z-30 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center">
-            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3l8 5v8l-8 5-8-5V8l8-5z" />
-            </svg>
+          <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center">
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 3l8 5v8l-8 5-8-5V8l8-5z" /></svg>
           </div>
           <div>
-            <h1 className="text-lg font-semibold text-slate-900 tracking-tight">Diamond Stock</h1>
-            <p className="text-xs text-slate-400">Inventory Management</p>
+            <div className="text-[17px] font-bold text-slate-900 leading-tight">Transactions</div>
+            {rows.length > 0 && <div className="text-[11px] text-slate-400">Showing {filtered.length} of {rows.length} records</div>}
           </div>
         </div>
         <div className="flex items-center gap-3">
           {rows.length > 0 && (
-            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5">
-              <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z" />
-              </svg>
-              <input
-                type="text"
-                placeholder="Search..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="bg-transparent text-sm text-slate-700 placeholder-slate-400 outline-none w-48"
-              />
+            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-[7px]">
+              <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="#94a3b8" strokeWidth={2}><circle cx="11" cy="11" r="8" /><path strokeLinecap="round" d="M21 21l-4.35-4.35" /></svg>
+              <input type="text" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)}
+                className="border-none bg-transparent text-[13px] text-slate-900 outline-none w-[140px] font-[DM_Sans,sans-serif]" />
             </div>
           )}
-          <button
-            onClick={() => fileRef.current.click()}
-            className="flex items-center gap-2 bg-slate-900 hover:bg-slate-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M8 12l4-4 4 4M12 8v8" />
-            </svg>
+          <button onClick={() => setShowCreate(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 text-[13px] font-semibold text-white bg-blue-600 border-none rounded-lg cursor-pointer font-[DM_Sans,sans-serif] hover:bg-blue-700">
+            <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+            Create
+          </button>
+          <button onClick={() => fileRef.current.click()}
+            className="flex items-center gap-1.5 px-4 py-2 text-[13px] font-medium text-slate-600 bg-white border border-slate-200 rounded-lg cursor-pointer font-[DM_Sans,sans-serif] hover:bg-slate-50">
+            <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M8 12l4-4 4 4M12 8v8" /></svg>
             Import Excel
           </button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".xlsx,.xls"
-            className="hidden"
-            onChange={(e) => handleFile(e.target.files[0])}
-          />
+          <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={e => { handleFile(e.target.files[0]); e.target.value = ""; }} />
         </div>
       </div>
 
-      <div className="px-6 py-4">
-        {/* Stats bar */}
-        {rows.length > 0 && (
-          <div className="flex items-center gap-4 mb-4">
-            <div className="flex items-center gap-2 text-sm text-slate-500">
-              <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
-              <span><span className="font-semibold text-slate-900">{rows.filter(r => r["Status"] === "In Stock").length}</span> In Stock</span>
+      <div className="px-7 py-5">
+        {importing && (
+          <div className="mb-4 bg-white rounded-xl border border-slate-200 px-5 py-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[13px] font-medium text-slate-700">Importing to database...</span>
+              <span className="text-xs text-slate-400">{importProgress.done} / {importProgress.total}</span>
             </div>
-            <div className="flex items-center gap-2 text-sm text-slate-500">
-              <div className="w-2 h-2 rounded-full bg-blue-400"></div>
-              <span><span className="font-semibold text-slate-900">{rows.filter(r => r["Status"] === "Sold").length}</span> Sold</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-slate-500">
-              <div className="w-2 h-2 rounded-full bg-slate-300"></div>
-              <span><span className="font-semibold text-slate-900">{filtered.length}</span> {search ? "Filtered" : "Total"} Records</span>
-            </div>
-            <div className="ml-auto flex items-center gap-3">
-              <div className="text-right">
-                <p className="text-xs text-slate-400">Total Inventory Value</p>
-                <p className="text-sm font-semibold text-slate-900">
-                  ₹{rows.reduce((sum, row) => sum + (row["Based currency INR"] || 0), 0).toLocaleString("en-IN")}
-                </p>
-              </div>
-              {fileName && (
-                <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  {fileName}
-                </div>
-              )}
+            <div className="w-full bg-slate-100 rounded-full h-1.5">
+              <div className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
+                style={{ width: `${importProgress.total ? (importProgress.done / importProgress.total) * 100 : 0}%` }} />
             </div>
           </div>
         )}
 
-        {/* Drop zone / Empty state */}
-        {rows.length === 0 && !isLoading && (
+        {rows.length === 0 && !isLoading && !importing && (
           <div
-            className={`border-2 border-dashed rounded-xl transition-all mb-4 ${
-              isDragging ? "border-slate-400 bg-slate-100" : "border-slate-200 bg-white"
-            }`}
-            onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+            onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
             onDragLeave={() => setIsDragging(false)}
-            onDrop={(e) => { e.preventDefault(); setIsDragging(false); handleFile(e.dataTransfer.files[0]); }}
-          >
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
-                <svg className="w-7 h-7 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 3l8 5v8l-8 5-8-5V8l8-5z" />
-                </svg>
-              </div>
-              <p className="text-slate-700 font-medium mb-1">No diamonds imported yet</p>
-              <p className="text-slate-400 text-sm mb-4">Import an Excel file or drag & drop here to populate the table</p>
-              <button
-                onClick={() => fileRef.current.click()}
-                className="flex items-center gap-2 bg-slate-900 hover:bg-slate-700 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-colors"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M8 12l4-4 4 4M12 8v8" />
-                </svg>
-                Import Excel File
+            onDrop={e => { e.preventDefault(); setIsDragging(false); handleFile(e.dataTransfer.files[0]); }}
+            className={`border-2 border-dashed rounded-2xl flex flex-col items-center justify-center py-20 px-5 text-center transition-all duration-200 ${isDragging ? "border-blue-600 bg-blue-50" : "border-slate-200 bg-white"}`}>
+            <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center mb-4">
+              <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="#2563eb" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 3l8 5v8l-8 5-8-5V8l8-5z" /></svg>
+            </div>
+            <p className="m-0 mb-1.5 text-[15px] font-semibold text-slate-900">No transactions yet</p>
+            <p className="m-0 mb-5 text-[13px] text-slate-400">Create one manually or import an Excel file</p>
+            <div className="flex items-center gap-3">
+              <button onClick={() => setShowCreate(true)}
+                className="flex items-center gap-2 px-5 py-2.5 text-[13px] font-semibold text-white bg-blue-600 border-none rounded-[9px] cursor-pointer font-[DM_Sans,sans-serif] hover:bg-blue-700">
+                <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+                Create Transaction
+              </button>
+              <button onClick={() => fileRef.current.click()}
+                className="flex items-center gap-2 px-5 py-2.5 text-[13px] font-medium text-slate-600 bg-white border border-slate-200 rounded-[9px] cursor-pointer font-[DM_Sans,sans-serif] hover:bg-slate-50">
+                <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M8 12l4-4 4 4M12 8v8" /></svg>
+                Import Excel
               </button>
             </div>
           </div>
         )}
 
         {isLoading && (
-          <div className="flex items-center justify-center py-24 bg-white rounded-xl border border-slate-200">
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-8 h-8 border-2 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
-              <p className="text-sm text-slate-500">Loading diamonds...</p>
-            </div>
+          <div className="flex flex-col items-center justify-center py-24 px-5 bg-white rounded-2xl border border-slate-200">
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+            <div style={{ animation: "spin 0.7s linear infinite" }} className="w-8 h-8 border-[3px] border-blue-600 border-t-transparent rounded-full mb-3" />
+            <p className="m-0 text-[13px] text-slate-400">Loading transactions...</p>
           </div>
         )}
 
-        {/* Table */}
-        {!isLoading && rows.length > 0 && (
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+        {!isLoading && !importing && rows.length > 0 && (
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse">
+              <table className="w-full border-collapse font-[DM_Sans,sans-serif]">
                 <thead>
-                  <tr className="bg-slate-900">
-                    <th className="sticky left-0 z-20 bg-slate-900 px-3 py-3 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider whitespace-nowrap border-r border-slate-700">
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    {/* Row number — fixed, not draggable */}
+                    <th className="px-3.5 py-[11px] text-left text-[11px] font-semibold text-slate-500 uppercase tracking-[0.05em] whitespace-nowrap border-r border-slate-100 sticky left-0 bg-slate-50 z-20 select-none">
                       #
                     </th>
-                    {COLUMNS.map((col) => (
-                      <th
-                        key={col.key}
-                        className="px-3 py-3 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider whitespace-nowrap border-r border-slate-800 last:border-r-0"
-                      >
-                        {col.label}
-                      </th>
-                    ))}
-                   </tr>
+
+                    {/* Draggable column headers */}
+                    {orderedColumns.map(col => {
+                      const isOver = dragOverKey === col.key;
+                      return (
+                        <th
+                          key={col.key}
+                          draggable
+                          onDragStart={e => handleColDragStart(e, col.key)}
+                          onDragOver={e => handleColDragOver(e, col.key)}
+                          onDragLeave={handleColDragLeave}
+                          onDrop={e => handleColDrop(e, col.key)}
+                          onDragEnd={handleColDragEnd}
+                          className="px-3.5 py-[11px] text-left text-[11px] font-semibold text-slate-500 uppercase tracking-[0.05em] whitespace-nowrap border-r border-slate-100 select-none"
+                          style={{
+                            cursor: "grab",
+                            background: isOver ? "#dbeafe" : undefined,
+                            color: isOver ? "#1d4ed8" : undefined,
+                            borderLeft: isOver ? "2px solid #2563eb" : undefined,
+                            transition: "background 0.1s, color 0.1s",
+                            userSelect: "none",
+                          }}
+                        >
+                          <span className="flex items-center gap-1.5">
+                            {/* Dot-grid drag handle */}
+                            <span
+                              style={{
+                                display: "inline-flex",
+                                opacity: 0.4,
+                                flexShrink: 0,
+                                pointerEvents: "none",
+                              }}
+                            >
+                              <svg width="8" height="12" viewBox="0 0 8 12" fill="currentColor">
+                                <circle cx="2" cy="2" r="1.1" />
+                                <circle cx="6" cy="2" r="1.1" />
+                                <circle cx="2" cy="6" r="1.1" />
+                                <circle cx="6" cy="6" r="1.1" />
+                                <circle cx="2" cy="10" r="1.1" />
+                                <circle cx="6" cy="10" r="1.1" />
+                              </svg>
+                            </span>
+                            {col.label}
+                            {col.readOnly && (
+                              <span className="text-slate-300 font-normal normal-case text-[10px]">auto</span>
+                            )}
+                          </span>
+                        </th>
+                      );
+                    })}
+                  </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((row, i) => {
-                    const originalIndex = rows.findIndex(r => r === row);
-                    return (
-                      <tr
-                        key={i}
-                        onClick={() => handleRowClick(row, originalIndex)}
-                        className={`hover:bg-blue-50/40 transition-colors cursor-pointer ${i % 2 === 0 ? "bg-white" : "bg-slate-50/40"}`}
-                      >
-                        <td className="sticky left-0 z-10 bg-inherit px-3 py-2.5 text-slate-400 text-xs border-r border-slate-100 font-mono">
-                          {i + 1}
+                  {filtered.length === 0 ? (
+                    <tr>
+                      <td colSpan={orderedColumns.length + 1} className="py-12 px-5 text-center text-[13px] text-slate-400">
+                        No results for "<strong className="text-slate-600">{search}</strong>"
+                      </td>
+                    </tr>
+                  ) : filtered.map((row, i) => (
+                    <tr
+                      key={row._id || i}
+                      onClick={() => setEditingRow(row)}
+                      className={`border-b border-slate-100 cursor-pointer transition-colors duration-100 hover:bg-blue-50 ${i % 2 === 0 ? "bg-white" : "bg-slate-50/60"}`}
+                    >
+                      <td className="px-3.5 py-2.5 text-xs text-slate-400 border-r border-slate-100 sticky left-0 bg-inherit z-10">
+                        {i + 1}
+                      </td>
+                      {orderedColumns.map(col => (
+                        <td key={col.key} className="px-3.5 py-2.5 border-r border-slate-100 whitespace-nowrap text-slate-700">
+                          {formatCell(col.key, row[col.key])}
                         </td>
-                        {COLUMNS.map((col) => (
-                          <td
-                            key={col.key}
-                            className="px-3 py-2.5 text-xs text-slate-700 border-r border-slate-100 last:border-r-0 whitespace-nowrap"
-                          >
-                            {formatCell(col.key, row[col.key])}
-                          </td>
-                        ))}
-                      </tr>
-                    );
-                  })}
+                      ))}
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
 
-            <div className="border-t border-slate-100 px-4 py-2.5 flex items-center justify-between bg-slate-50/50">
-              <p className="text-xs text-slate-400">
-                Showing <span className="font-medium text-slate-600">{filtered.length}</span> of{" "}
-                <span className="font-medium text-slate-600">{rows.length}</span> records
-              </p>
+            {/* Footer */}
+            <div className="border-t border-slate-100 px-4 py-2.5 flex items-center justify-between bg-slate-50">
+              <span className="text-xs text-slate-400">
+                Showing <strong className="text-slate-600">{filtered.length}</strong> of <strong className="text-slate-600">{rows.length}</strong> records
+                {fileName && <span className="ml-2.5 text-slate-300">· {fileName}</span>}
+              </span>
               <button
-                onClick={() => { setRows([]); setFileName(""); setSearch(""); }}
-                className="text-xs text-slate-400 hover:text-red-500 transition-colors flex items-center gap-1"
+                onClick={fetchTransactions}
+                className="flex items-center gap-1.5 text-xs text-slate-400 bg-transparent border-none cursor-pointer font-[DM_Sans,sans-serif] hover:text-blue-500 transition-colors duration-150"
               >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-                Clear data
+                <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                Refresh
               </button>
             </div>
           </div>
         )}
       </div>
 
-      {/* Edit Modal */}
-      {editingDiamond && (
-        <EditModal
-          diamond={editingDiamond}
-          index={editingIndex}
-          onSave={handleSave}
-          onClose={() => {
-            setEditingDiamond(null);
-            setEditingIndex(null);
-          }}
+      {showCreate && (
+        <CreateTransactionModal
+          onSave={handleCreateSave}
+          onClose={() => setShowCreate(false)}
+        />
+      )}
+      {editingRow && (
+        <EditTransactionModal
+          transaction={editingRow}
+          onSave={handleEditSave}
+          onClose={() => setEditingRow(null)}
         />
       )}
     </div>
