@@ -1,7 +1,12 @@
 import Transaction from '../models/Transaction.js'
+import Diamond from '../models/Diamond.js'
 import Bank from '../models/Bank.js'
 import Status from '../models/Status.js'
 import PaymentStatus from '../models/PaymentStatus.js'
+import Purchase from '../models/Purchase.js'
+import Sale from '../models/Sale.js'
+import Pricing from '../models/Pricing.js'
+import PL from '../models/PL.js'
 import mongoose from 'mongoose'
 
 // Safe number helper — returns undefined if value is missing or NaN
@@ -59,26 +64,6 @@ const resolveStatuses = async (statusVal, paymentStatusVal) => {
   return result
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// calculateTransactionFields
-//
-// All formulas verified against Excel (Stock2upd.xlsx):
-//
-//  gstAmount            = weight × pricePerCaratUSD × (gstPercent / 100)
-//  buyPriceTotal        = weight × pricePerCaratUSD + gstAmount
-//  basePriceINR         = buyPriceTotal × rateAtPurchase          (bank.usdToInr)
-//  actualPriceINR       = correctionPriceUSD × weight × actualRate
-//  marketPL             = actualPriceINR − basePriceINR
-//  sellPriceLocalCurrency = actualPriceINR / bank.inrToRub × (1 + markup)
-//  priceRUB             = ROUNDUP(sellPriceLocalCurrency, −2)     (ceil to nearest 100)
-//  priceUSD             = priceRUB / bank.inrToRub                ← FIX: was ÷ usdToRub
-//  pricePerCt           = priceUSD / weight
-//  saleBaseINR          = saleAmount × rateOnDateOfSale           ← FIX: direct multiply, not currency switch
-//  marginality          = saleBaseINR − basePriceINR
-//  actualMarkup         = saleBaseINR / (basePriceINR / 100) − 100
-//  bonusAmount          = actualPriceINR × bonusPoints / 100
-//  bonusInLocalCurrency = bonusAmount / bonusRate                 ← FIX: was × bonusRate
-// ─────────────────────────────────────────────────────────────────────────────
 const calculateTransactionFields = async (data) => {
   const {
     typeOfExchange,
@@ -90,14 +75,11 @@ const calculateTransactionFields = async (data) => {
     markup,
   } = data
 
-  // These three come from the bank record
-  let rateAtPurchase = safeNum(data.rateAtPurchase)   // bank.usdToInr  e.g. 94.2
-  let rateRUB = safeNum(data.rateRUB)          // bank.usdToRub  e.g. 1.173
-  let bonusRate = safeNum(data.bonusRate)        // bank.inrToRub  e.g. 81.5
+  let rateAtPurchase = safeNum(data.rateAtPurchase)
+  let rateRUB = safeNum(data.rateRUB)
+  let bonusRate = safeNum(data.bonusRate)
   let resolvedBankId = null
 
-  // ── Bank resolution ───────────────────────────────────────────────────────
-  // Priority 1: explicit bank ObjectId from edit modal dropdown
   const bankId = data.bank || data.typeOfExchange
   if (bankId && mongoose.Types.ObjectId.isValid(bankId)) {
     const bank = await Bank.findById(bankId)
@@ -107,9 +89,7 @@ const calculateTransactionFields = async (data) => {
       bonusRate = bank.inrToRub
       resolvedBankId = bank._id
     }
-  }
-  // Priority 2: match bank by name string from Excel import
-  else if (typeOfExchange && typeof typeOfExchange === 'string') {
+  } else if (typeOfExchange && typeof typeOfExchange === 'string') {
     const bank = await findBankByName(typeOfExchange)
     if (bank) {
       rateAtPurchase = bank.usdToInr
@@ -119,7 +99,6 @@ const calculateTransactionFields = async (data) => {
     }
   }
 
-  // ── Raw inputs ────────────────────────────────────────────────────────────
   const _weight = safeNum(weight)
   const _pricePct = safeNum(pricePerCaratUSD)
   const _gstPct = safeNum(gstPercent) ?? 0
@@ -131,102 +110,67 @@ const calculateTransactionFields = async (data) => {
   const actualRate = safeNum(data.actualRate) ?? rateAtPurchase
   const rateOnDateOfSale = safeNum(data.rateOnDateOfSale)
 
-  // ── Purchase calculations ─────────────────────────────────────────────────
-  // gstAmount = weight × pricePerCaratUSD × (gstPercent / 100)
   const gstAmount = (_weight != null && _pricePct != null)
     ? _weight * _pricePct * (_gstPct / 100)
     : undefined
 
-  // buyPriceTotal = weight × pricePerCaratUSD + gstAmount
   const buyPriceTotal = (_weight != null && _pricePct != null)
     ? _weight * _pricePct + (gstAmount ?? 0)
     : undefined
 
-  // basePriceINR = buyPriceTotal × rateAtPurchase
   const basePriceINR = (buyPriceTotal != null && rateAtPurchase != null)
     ? buyPriceTotal * rateAtPurchase
     : undefined
 
-  // actualPriceINR = correctionPriceUSD × weight × actualRate
   const actualPriceINR = (correctionPriceUSD != null && _weight != null && actualRate != null)
     ? correctionPriceUSD * _weight * actualRate
     : undefined
 
-  // marketPL = actualPriceINR − basePriceINR
   const marketPL = (actualPriceINR != null && basePriceINR != null)
     ? actualPriceINR - basePriceINR
     : undefined
 
-  // ── Pricing calculations ──────────────────────────────────────────────────
-  // sellPriceLocalCurrency = actualPriceINR / bank.usdToRub × (1 + markup)
   const sellPriceLocalCurrency = (actualPriceINR != null && bonusRate != null && _markup != null)
     ? (actualPriceINR / bonusRate) * (1 + _markup)
     : undefined
 
-  // pricePerCt = sellpriceLocalCurrency * bank.intToRub    
   const priceRUB = (sellPriceLocalCurrency != null && bonusRate != null)
     ? Math.ceil((sellPriceLocalCurrency * bonusRate) / 100) * 100
     : undefined
 
-  // pricePerCt = sellpriceLocalCurrency * bank.intToUsd  
   const priceUSD = (sellPriceLocalCurrency != null && rateAtPurchase != null)
     ? sellPriceLocalCurrency / rateAtPurchase
     : undefined
 
-  // pricePerCt = priceUSD / weight
   const pricePerCt = (priceUSD != null && _weight != null)
     ? priceUSD / _weight
     : undefined
 
-  // ── Sale calculations ─────────────────────────────────────────────────────
-  // saleBaseINR = saleAmount × rateOnDateOfSale  (direct, no currency switch)
   const saleBaseINR = (_saleAmount != null && rateOnDateOfSale != null)
     ? _saleAmount * rateOnDateOfSale
     : undefined
 
-  // marginality = saleBaseINR − basePriceINR
   const marginality = (saleBaseINR != null && basePriceINR != null)
     ? saleBaseINR - basePriceINR
     : undefined
 
-  // actualMarkup = saleBaseINR / (basePriceINR / 100) − 100
   const actualMarkup = (saleBaseINR != null && basePriceINR != null && basePriceINR !== 0)
     ? saleBaseINR / (basePriceINR / 100) - 100
     : undefined
 
-  // ── Bonus calculations ────────────────────────────────────────────────────
-  // bonusAmount = actualPriceINR × bonusPoints / 100
   const bonusAmount = (actualPriceINR != null)
     ? (actualPriceINR * _bonusPts) / 100
     : undefined
 
-  // bonusInLocalCurrency = bonusAmount / bonusRate   ← divide, not multiply
   const bonusInLocalCurrency = (bonusAmount != null && bonusRate != null)
     ? bonusAmount / bonusRate
     : undefined
 
-  // ── Strip undefined / NaN ─────────────────────────────────────────────────
   const computed = {
-    rateAtPurchase,
-    rateRUB,
-    bonusRate,
-    gstAmount,
-    buyPriceTotal,
-    basePriceINR,
-    correctionPriceUSD,
-    actualRate,
-    actualPriceINR,
-    marketPL,
-    sellPriceLocalCurrency,
-    priceRUB,
-    priceUSD,
-    pricePerCt,
-    rateOnDateOfSale,
-    saleBaseINR,
-    marginality,
-    actualMarkup,
-    bonusAmount,
-    bonusInLocalCurrency,
+    rateAtPurchase, rateRUB, bonusRate, gstAmount, buyPriceTotal,
+    basePriceINR, correctionPriceUSD, actualRate, actualPriceINR, marketPL,
+    sellPriceLocalCurrency, priceRUB, priceUSD, pricePerCt, rateOnDateOfSale,
+    saleBaseINR, marginality, actualMarkup, bonusAmount, bonusInLocalCurrency,
     bank: resolvedBankId,
   }
 
@@ -237,6 +181,263 @@ const calculateTransactionFields = async (data) => {
   })
 
   return computed
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Build documents from a saved Transaction
+// ─────────────────────────────────────────────────────────────────────────────
+
+const buildDiamondFromTransaction = (transaction) => {
+  const { length, width, height } = transaction
+
+  const measurement =
+    length && width && height
+      ? `${length}×${width}×${height}`
+      : length && width
+        ? `${length}×${width}`
+        : undefined
+
+  return {
+    skuNo:         transaction.skuNo,
+    shippingNo:    transaction.shippingNo,
+    shape:         transaction.shape,
+    weight:        transaction.weight,
+    carat:         transaction.carat,
+    cut:           transaction.cut,
+    colour:        transaction.colour,
+    clarity:       transaction.clarity,
+    synthesis:     transaction.synthesis,
+    measurement,
+    certificateNo: transaction.certificateNo,
+    laboratory:    transaction.laboratory,
+  }
+}
+
+const buildPurchaseFromTransaction = (transaction, diamondId) => ({
+  diamond:            diamondId,
+  bank:               transaction.bank ?? undefined,
+  supplier:           transaction.supplier,
+  courier:            transaction.courier,
+  buyerAtSource:      transaction.buyerAtSource,
+  dateOfPurchase:     transaction.dateOfPurchase,
+  pricePerCaratUSD:   transaction.pricePerCaratUSD,
+  gstPercent:         transaction.gstPercent,
+  gstAmount:          transaction.gstAmount,
+  buyPriceTotal:      transaction.buyPriceTotal,
+  purchaseCurrency:   transaction.purchaseCurrency,
+  rateAtPurchase:     transaction.rateAtPurchase,
+  basePriceINR:       transaction.basePriceINR,
+  correctionPriceUSD: transaction.correctionPriceUSD,
+  actualRate:         transaction.actualRate,
+  actualPriceINR:     transaction.actualPriceINR,
+  marketPL:           transaction.marketPL,
+})
+
+const buildSaleFromTransaction = (transaction, diamondId, purchaseId) => ({
+  diamond:          diamondId,
+  purchase:         purchaseId,
+  bank:             transaction.bank ?? undefined,
+  dateOfSale:       transaction.dateOfSale,
+  buyerName:        transaction.buyerName,
+  saleAmount:       transaction.saleAmount,
+  saleCurrency:     transaction.saleCurrency,
+  rateOnDateOfSale: transaction.rateOnDateOfSale,
+  saleBaseINR:      transaction.saleBaseINR,
+})
+
+const buildPricingFromTransaction = (transaction, diamondId, purchaseId) => ({
+  diamond:                diamondId,
+  purchase:               purchaseId,
+  bank:                   transaction.bank ?? undefined,
+  markup:                 transaction.markup,
+  sellPriceLocalCurrency: transaction.sellPriceLocalCurrency,
+  localCurrency:          transaction.localCurrency,
+  typeOfExchange:         transaction.typeOfExchange,
+  priceRUB:               transaction.priceRUB,
+  priceUSD:               transaction.priceUSD,
+  pricePerCt:             transaction.pricePerCt,
+  rateRUB:                transaction.rateRUB,
+})
+
+const buildPLFromTransaction = (transaction, diamondId, purchaseId, saleId) => ({
+  diamond:              diamondId,
+  purchase:             purchaseId,
+  sale:                 saleId,
+  marginality:          transaction.marginality,
+  actualMarkup:         transaction.actualMarkup,
+  manager:              transaction.manager,
+  bonusPoints:          transaction.bonusPoints,
+  bonusAmount:          transaction.bonusAmount,
+  bonusRate:            transaction.bonusRate,
+  bonusInLocalCurrency: transaction.bonusInLocalCurrency,
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Create all linked documents (Diamond → Purchase → Sale + Pricing → PL)
+// Returns { diamond, purchase, sale, pricing, pl } — all may be null on error
+// ─────────────────────────────────────────────────────────────────────────────
+const createLinkedDocuments = async (transaction) => {
+  let diamond = null
+  let purchase = null
+  let sale = null
+  let pricing = null
+  let pl = null
+
+  // 1. Diamond
+  try {
+    const diamondData = buildDiamondFromTransaction(transaction)
+    diamond = new Diamond(diamondData)
+    await diamond.save()
+  } catch (err) {
+    console.error('Diamond creation failed for SKU', transaction.skuNo, '—', err.message)
+    return { diamond, purchase, sale, pricing, pl }
+  }
+
+  // 2. Purchase (requires diamond)
+  try {
+    const purchaseData = buildPurchaseFromTransaction(transaction, diamond._id)
+    purchase = new Purchase(purchaseData)
+    await purchase.save()
+  } catch (err) {
+    console.error('Purchase creation failed for SKU', transaction.skuNo, '—', err.message)
+    return { diamond, purchase, sale, pricing, pl }
+  }
+
+  // 3. Sale (requires diamond + purchase)
+  try {
+    const saleData = buildSaleFromTransaction(transaction, diamond._id, purchase._id)
+    sale = new Sale(saleData)
+    await sale.save()
+  } catch (err) {
+    console.error('Sale creation failed for SKU', transaction.skuNo, '—', err.message)
+  }
+
+  // 4. Pricing (requires diamond + purchase; independent of sale)
+  try {
+    const pricingData = buildPricingFromTransaction(transaction, diamond._id, purchase._id)
+    pricing = new Pricing(pricingData)
+    await pricing.save()
+  } catch (err) {
+    console.error('Pricing creation failed for SKU', transaction.skuNo, '—', err.message)
+  }
+
+  // 5. PL (requires diamond + purchase + sale)
+  if (sale) {
+    try {
+      const plData = buildPLFromTransaction(transaction, diamond._id, purchase._id, sale._id)
+      pl = new PL(plData)
+      await pl.save()
+    } catch (err) {
+      console.error('PL creation failed for SKU', transaction.skuNo, '—', err.message)
+    }
+  }
+
+  return { diamond, purchase, sale, pricing, pl }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sync all linked documents on update (upsert by diamond skuNo chain)
+// ─────────────────────────────────────────────────────────────────────────────
+const syncLinkedDocuments = async (transaction) => {
+  // 1. Diamond
+  let diamond = null
+  try {
+    const diamondData = buildDiamondFromTransaction(transaction)
+    diamond = await Diamond.findOneAndUpdate(
+      { skuNo: transaction.skuNo },
+      diamondData,
+      { returnDocument: 'after', runValidators: true }
+    )
+  } catch (err) {
+    console.error('Diamond sync failed for SKU', transaction.skuNo, '—', err.message)
+    return
+  }
+
+  if (!diamond) return
+
+  // 2. Purchase
+  let purchase = null
+  try {
+    const purchaseData = buildPurchaseFromTransaction(transaction, diamond._id)
+    purchase = await Purchase.findOneAndUpdate(
+      { diamond: diamond._id },
+      purchaseData,
+      { returnDocument: 'after', runValidators: true }
+    )
+  } catch (err) {
+    console.error('Purchase sync failed for SKU', transaction.skuNo, '—', err.message)
+    return
+  }
+
+  if (!purchase) return
+
+  // 3. Sale
+  let sale = null
+  try {
+    const saleData = buildSaleFromTransaction(transaction, diamond._id, purchase._id)
+    sale = await Sale.findOneAndUpdate(
+      { diamond: diamond._id },
+      saleData,
+      { returnDocument: 'after', runValidators: true }
+    )
+  } catch (err) {
+    console.error('Sale sync failed for SKU', transaction.skuNo, '—', err.message)
+  }
+
+  // 4. Pricing
+  try {
+    const pricingData = buildPricingFromTransaction(transaction, diamond._id, purchase._id)
+    await Pricing.findOneAndUpdate(
+      { diamond: diamond._id },
+      pricingData,
+      { returnDocument: 'after', runValidators: true }
+    )
+  } catch (err) {
+    console.error('Pricing sync failed for SKU', transaction.skuNo, '—', err.message)
+  }
+
+  // 5. PL
+  if (sale) {
+    try {
+      const plData = buildPLFromTransaction(transaction, diamond._id, purchase._id, sale._id)
+      await PL.findOneAndUpdate(
+        { diamond: diamond._id },
+        plData,
+        { returnDocument: 'after', runValidators: true }
+      )
+    } catch (err) {
+      console.error('PL sync failed for SKU', transaction.skuNo, '—', err.message)
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Delete all linked documents on transaction delete
+// ─────────────────────────────────────────────────────────────────────────────
+const deleteLinkedDocuments = async (transaction) => {
+  const diamond = await Diamond.findOne({ skuNo: transaction.skuNo })
+  if (!diamond) {
+    console.warn('deleteLinkedDocuments: no diamond found for skuNo:', transaction.skuNo)
+    return
+  }
+
+  const diamondId = diamond._id
+
+  const deletions = [
+    ['PL',       () => PL.deleteMany({ diamond: diamondId })],
+    ['Pricing',  () => Pricing.deleteMany({ diamond: diamondId })],
+    ['Sale',     () => Sale.deleteMany({ diamond: diamondId })],
+    ['Purchase', () => Purchase.deleteMany({ diamond: diamondId })],
+    ['Diamond',  () => Diamond.findByIdAndDelete(diamondId)],
+  ]
+
+  for (const [name, fn] of deletions) {
+    try {
+      await fn()
+    } catch (err) {
+      console.error(`${name} delete failed for SKU ${transaction.skuNo}:`, err.message)
+    }
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -255,6 +456,10 @@ export const createTransaction = async (req, res) => {
     })
 
     await transaction.save()
+
+    // ── Create all linked documents ───────────────────────────────────────
+    await createLinkedDocuments(transaction)
+    // ─────────────────────────────────────────────────────────────────────
 
     const populated = await Transaction.findById(transaction._id)
       .populate('bank')
@@ -299,20 +504,12 @@ export const updateTransaction = async (req, res) => {
     const existing = await Transaction.findById(req.params.id)
     if (!existing) return res.status(404).json({ success: false, message: 'Transaction not found' })
 
-    // Merge existing → incoming so calculateTransactionFields has full context
-    const mergedData = {
-      ...existing.toObject(),
-      ...req.body,
-    }
+    const mergedData = { ...existing.toObject(), ...req.body }
 
     const resolvedStatuses = await resolveStatuses(mergedData.status, mergedData.paymentStatus)
     const computedFields = await calculateTransactionFields(mergedData)
 
-    const updateObject = {
-      ...req.body,
-      ...resolvedStatuses,
-      ...computedFields,
-    }
+    const updateObject = { ...req.body, ...resolvedStatuses, ...computedFields }
 
     Object.keys(updateObject).forEach(k => {
       if (updateObject[k] === undefined) delete updateObject[k]
@@ -321,13 +518,17 @@ export const updateTransaction = async (req, res) => {
     const transaction = await Transaction.findByIdAndUpdate(
       req.params.id,
       updateObject,
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     )
       .populate('bank')
       .populate('status')
       .populate('paymentStatus')
 
     if (!transaction) return res.status(404).json({ success: false, message: 'Transaction not found' })
+
+    // ── Sync all linked documents ─────────────────────────────────────────
+    await syncLinkedDocuments(transaction)
+    // ─────────────────────────────────────────────────────────────────────
 
     res.status(200).json({ success: true, data: transaction })
   } catch (error) {
@@ -336,10 +537,33 @@ export const updateTransaction = async (req, res) => {
   }
 }
 
+export const cleanupOrphanedDocuments = async (req, res) => {
+  try {
+    await PL.deleteMany({})
+    await Pricing.deleteMany({})
+    await Sale.deleteMany({})
+    await Purchase.deleteMany({})
+    await Diamond.deleteMany({})
+
+    res.status(200).json({ success: true, message: 'All linked documents cleared' })
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message })
+  }
+}
+
 export const deleteTransaction = async (req, res) => {
   try {
     const transaction = await Transaction.findByIdAndDelete(req.params.id)
     if (!transaction) return res.status(404).json({ success: false, message: 'Transaction not found' })
+
+    // ── Delete all linked documents ───────────────────────────────────────
+    try {
+      await deleteLinkedDocuments(transaction)
+    } catch (err) {
+      console.error('Linked document delete failed for SKU', transaction.skuNo, '—', err.message)
+    }
+    // ─────────────────────────────────────────────────────────────────────
+
     res.status(200).json({ success: true, message: 'Transaction deleted' })
   } catch (error) {
     res.status(500).json({ success: false, message: error.message })
