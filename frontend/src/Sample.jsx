@@ -3,6 +3,8 @@ import * as XLSX from "https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs";
 import CreateTransactionModal from "./forms/CreateTransactionModal";
 import EditTransactionModal from "./forms/EditTransactionModal";
 import DuplicateChecker from "../components/DuplicateChecker";
+import FilterButton, { DEFAULT_FILTERS } from "../components/FilterButton";
+import Pagination from "../components/Pagination";
 
 const API = "http://localhost:5000/api";
 
@@ -80,17 +82,17 @@ function getLabel(value) {
 }
 
 const STATUS_STYLES = {
-  "In Stock":     { bg: "#f0fdf4", color: "#16a34a", border: "#bbf7d0" },
-  "Sold":         { bg: "#eff6ff", color: "#2563eb", border: "#bfdbfe" },
-  "Pending":      { bg: "#fffbeb", color: "#d97706", border: "#fde68a" },
-  "Hold":         { bg: "#faf5ff", color: "#7c3aed", border: "#e9d5ff" },
-  "Delivery":     { bg: "#ecfeff", color: "#0891b2", border: "#a5f3fc" },
-  "Invoice":      { bg: "#fdf2f8", color: "#db2777", border: "#fbcfe8" },
-  "Invoce":       { bg: "#fdf2f8", color: "#db2777", border: "#fbcfe8" },
-  "Inventory":    { bg: "#f8fafc", color: "#64748b", border: "#e2e8f0" },
-  "Stock":        { bg: "#f0fdf4", color: "#16a34a", border: "#bbf7d0" },
-  "Local office": { bg: "#f0f9ff", color: "#0369a1", border: "#bae6fd" },
-  default:        { bg: "#f8fafc", color: "#94a3b8", border: "#e2e8f0" },
+  "In Stock":    { bg: "#f0fdf4", color: "#16a34a", border: "#bbf7d0" },
+  "Sold":        { bg: "#eff6ff", color: "#2563eb", border: "#bfdbfe" },
+  "Pending":     { bg: "#fffbeb", color: "#d97706", border: "#fde68a" },
+  "Hold":        { bg: "#faf5ff", color: "#7c3aed", border: "#e9d5ff" },
+  "Delivery":    { bg: "#ecfeff", color: "#0891b2", border: "#a5f3fc" },
+  "Invoice":     { bg: "#fdf2f8", color: "#db2777", border: "#fbcfe8" },
+  "Invoce":      { bg: "#fdf2f8", color: "#db2777", border: "#fbcfe8" },
+  "Inventory":   { bg: "#f8fafc", color: "#64748b", border: "#e2e8f0" },
+  "Stock":       { bg: "#f0fdf4", color: "#16a34a", border: "#bbf7d0" },
+  "Local office":{ bg: "#f0f9ff", color: "#0369a1", border: "#bae6fd" },
+  default:       { bg: "#f8fafc", color: "#94a3b8", border: "#e2e8f0" },
 };
 
 const PAYMENT_STYLES = {
@@ -188,6 +190,12 @@ export default function Sample() {
   const [search, setSearch] = useState("");
   const [editingRow, setEditingRow] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+
+  // ── Pagination state ──────────────────────────────────────────────────────
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
 
   // Draggable columns
   const [columnOrder, setColumnOrder] = useState(() => COLUMNS.map(c => c.key));
@@ -215,6 +223,38 @@ export default function Sample() {
   };
 
   useEffect(() => { fetchTransactions(); }, []);
+
+  // ── Unified filter + search pipeline ─────────────────────────────────────
+
+  const filteredRows = rows
+    .filter((row) => {
+      if (filters.skuNo && !String(row.skuNo ?? "").toLowerCase().includes(filters.skuNo.toLowerCase())) return false;
+      if (filters.shippingNo && !String(row.shippingNo ?? "").toLowerCase().includes(filters.shippingNo.toLowerCase())) return false;
+      if (filters.supplier && row.supplier !== filters.supplier) return false;
+      if (filters.courier && row.courier !== filters.courier) return false;
+      if (filters.dateFrom && new Date(row.dateOfPurchase) < new Date(filters.dateFrom)) return false;
+      if (filters.dateTo && new Date(row.dateOfPurchase) > new Date(filters.dateTo)) return false;
+      if (filters.status.length && !filters.status.includes(getLabel(row.status))) return false;
+      if (filters.paymentStatus.length && !filters.paymentStatus.includes(getLabel(row.paymentStatus))) return false;
+      if (filters.shape.length && !filters.shape.includes(row.shape)) return false;
+      if (filters.purchaseCurrency.length && !filters.purchaseCurrency.includes(row.purchaseCurrency)) return false;
+      if (filters.laboratory.length && !filters.laboratory.includes(row.laboratory)) return false;
+      if (filters.warehouse.length && !filters.warehouse.includes(row.warehouse)) return false;
+      return true;
+    })
+    .filter((row) =>
+      search
+        ? COLUMNS.some(col =>
+            String(getLabel(row[col.key]) ?? "").toLowerCase().includes(search.toLowerCase())
+          )
+        : true
+    );
+
+  // ── Paginated slice ───────────────────────────────────────────────────────
+  // Reset to page 1 whenever filters or search change
+  useEffect(() => { setPage(1); }, [search, filters]);
+
+  const displayRows = filteredRows.slice((page - 1) * pageSize, page * pageSize);
 
   // ── Excel helpers ─────────────────────────────────────────────────────────
 
@@ -273,43 +313,43 @@ export default function Sample() {
     const measurements = parseMeasurement(s(measurementColIdx));
 
     const result = {
-      shippingNo:         s(0),
-      skuNo:              s(1),
-      courier:            s(2),
-      supplier:           s(3),
-      buyerAtSource:      s(4),
-      dateOfPurchase:     excelDateToJS(row[5]),
-      shape:              s(6),
-      weight:             n(7),
-      certificateNo:      s(8),
-      pricePerCaratUSD:   n(9),
-      gstPercent:         n(10) ?? 0,
-      purchaseCurrency:   s(13) || "USD",
+      shippingNo: s(0),
+      skuNo: s(1),
+      courier: s(2),
+      supplier: s(3),
+      buyerAtSource: s(4),
+      dateOfPurchase: excelDateToJS(row[5]),
+      shape: s(6),
+      weight: n(7),
+      certificateNo: s(8),
+      pricePerCaratUSD: n(9),
+      gstPercent: n(10) ?? 0,
+      purchaseCurrency: s(13) || "USD",
       correctionPriceUSD: n(16),
-      actualRate:         n(17),
-      markup:             n(20),
-      localCurrency:      s(22),
-      typeOfExchange:     s(23),
-      warehouse:          s(26),
-      inventoryDate:      excelDateToJS(row[27]),
-      inventoryManager:   s(28),
-      synthesis:          s(30),
-      cut:                s(31),
-      carat:              n(32),
-      colour:             s(33),
-      clarity:            s(34),
-      location:           s(39),
-      laboratory:         s(40),
-      length:             measurements.length,
-      width:              measurements.width,
-      height:             measurements.height,
-      dateOfSale:         excelDateToJS(row[44]),
-      buyerName:          s(45),
-      saleAmount:         n(46),
-      saleCurrency:       s(47),
-      rateOnDateOfSale:   n(48),
-      manager:            s(53),
-      bonusPoints:        n(54),
+      actualRate: n(17),
+      markup: n(20),
+      localCurrency: s(22),
+      typeOfExchange: s(23),
+      warehouse: s(26),
+      inventoryDate: excelDateToJS(row[27]),
+      inventoryManager: s(28),
+      synthesis: s(30),
+      cut: s(31),
+      carat: n(32),
+      colour: s(33),
+      clarity: s(34),
+      location: s(39),
+      laboratory: s(40),
+      length: measurements.length,
+      width: measurements.width,
+      height: measurements.height,
+      dateOfSale: excelDateToJS(row[44]),
+      buyerName: s(45),
+      saleAmount: n(46),
+      saleCurrency: s(47),
+      rateOnDateOfSale: n(48),
+      manager: s(53),
+      bonusPoints: n(54),
     };
 
     if (statusId) result.status = statusId;
@@ -326,7 +366,6 @@ export default function Sample() {
 
   // ── Import logic ──────────────────────────────────────────────────────────
 
-  // Runs the actual POST loop for a list of already-mapped rows
   const runImport = async (mappedRows) => {
     setImporting(true);
     setImportProgress({ done: 0, total: mappedRows.length });
@@ -381,13 +420,10 @@ export default function Sample() {
       }
 
       const measurementColIdx = detectMeasurementColumnIndex(validRows);
-
-      // Map all rows first (no DB writes yet)
       const mappedRows = validRows.map(row =>
         mapExcelRow(row, statusesList, paymentStatusesList, measurementColIdx)
       );
 
-      // Fetch existing SKUs from DB to detect duplicates
       let existingSkus = new Set();
       try {
         const res = await fetch(`${API}/transactions`).then(r => r.json());
@@ -407,12 +443,10 @@ export default function Sample() {
       );
 
       if (duplicateSkus.length > 0) {
-        // Hand off to the duplicate modal — user decides
         setDuplicateModal({ duplicates: duplicateSkus, newRows: newMappedRows });
         return;
       }
 
-      // No duplicates — go straight to import
       await runImport(mappedRows);
     } catch (error) {
       console.error("Import error:", error);
@@ -425,7 +459,6 @@ export default function Sample() {
     else alert("Please select an Excel file (.xlsx or .xls)");
   };
 
-  // "Import New Only" — skip duplicates
   const handleDuplicateSkip = async () => {
     const { newRows } = duplicateModal;
     setDuplicateModal(null);
@@ -448,14 +481,6 @@ export default function Sample() {
     }
     setRows(prev => [patched, ...prev]);
   };
-
-  // ── Search filter ─────────────────────────────────────────────────────────
-
-  const filtered = rows.filter(row =>
-    search
-      ? COLUMNS.some(col => String(getLabel(row[col.key]) ?? "").toLowerCase().includes(search.toLowerCase()))
-      : true
-  );
 
   // ── Column drag handlers ──────────────────────────────────────────────────
 
@@ -510,7 +535,7 @@ export default function Sample() {
             <div className="text-[17px] font-bold text-slate-900 leading-tight">Transactions</div>
             {rows.length > 0 && (
               <div className="text-[11px] text-slate-400">
-                Showing {filtered.length} of {rows.length} records
+                Showing {filteredRows.length} of {rows.length} records
               </div>
             )}
           </div>
@@ -532,6 +557,16 @@ export default function Sample() {
               />
             </div>
           )}
+
+          <button
+            onClick={() => setFilterOpen(true)}
+            className="flex items-center gap-1.5 px-4 py-2 text-[13px] font-medium text-slate-600 bg-white border border-slate-200 rounded-lg cursor-pointer font-[DM_Sans,sans-serif] hover:bg-slate-50"
+          >
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h18M7 12h10M11 20h2" />
+            </svg>
+            Filter
+          </button>
 
           <button
             onClick={() => setShowCreate(true)}
@@ -636,17 +671,15 @@ export default function Sample() {
 
         {/* Data table */}
         {!isLoading && !importing && rows.length > 0 && (
-          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+          <div className="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
             <div className="overflow-x-auto">
               <table className="w-full border-collapse font-[DM_Sans,sans-serif]">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
-
                     {/* Fixed row-number column */}
                     <th className="px-3.5 py-[11px] text-left text-[11px] font-semibold text-slate-500 uppercase tracking-[0.05em] whitespace-nowrap border-r border-slate-100 sticky left-0 bg-slate-50 z-20 select-none">
                       #
                     </th>
-
                     {/* Draggable column headers */}
                     {orderedColumns.map(col => {
                       const isOver = dragOverKey === col.key;
@@ -691,23 +724,27 @@ export default function Sample() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.length === 0 ? (
+                  {displayRows.length === 0 ? (
                     <tr>
                       <td
                         colSpan={orderedColumns.length + 1}
                         className="py-12 px-5 text-center text-[13px] text-slate-400"
                       >
-                        No results for "<strong className="text-slate-600">{search}</strong>"
+                        {search
+                          ? <>No results for "<strong className="text-slate-600">{search}</strong>"</>
+                          : "No records match the active filters."
+                        }
                       </td>
                     </tr>
-                  ) : filtered.map((row, i) => (
+                  ) : displayRows.map((row, i) => (
                     <tr
                       key={row._id || i}
                       onClick={() => setEditingRow(row)}
                       className={`border-b border-slate-100 cursor-pointer transition-colors duration-100 hover:bg-blue-50 ${i % 2 === 0 ? "bg-white" : "bg-slate-50/60"}`}
                     >
+                      {/* Show the absolute row number, not the page-local index */}
                       <td className="px-3.5 py-2.5 text-xs text-slate-400 border-r border-slate-100 sticky left-0 bg-inherit z-10">
-                        {i + 1}
+                        {(page - 1) * pageSize + i + 1}
                       </td>
                       {orderedColumns.map(col => (
                         <td key={col.key} className="px-3.5 py-2.5 border-r border-slate-100 whitespace-nowrap text-slate-700">
@@ -720,13 +757,19 @@ export default function Sample() {
               </table>
             </div>
 
-            {/* Table footer */}
-            <div className="border-t border-slate-100 px-4 py-2.5 flex items-center justify-between bg-slate-50">
+            {/* ── Pagination footer (replaces the old footer) ── */}
+            <Pagination
+              total={filteredRows.length}
+              page={page}
+              pageSize={pageSize}
+              onPage={setPage}
+              onPageSize={(size) => { setPageSize(size); setPage(1); }}
+            />
+
+            {/* Source file label + refresh */}
+            <div className="border-t border-slate-100 px-4 py-2 flex items-center justify-between bg-slate-50">
               <span className="text-xs text-slate-400">
-                Showing{" "}
-                <strong className="text-slate-600">{filtered.length}</strong> of{" "}
-                <strong className="text-slate-600">{rows.length}</strong> records
-                {fileName && <span className="ml-2.5 text-slate-300">· {fileName}</span>}
+                {fileName && <span>· {fileName}</span>}
               </span>
               <button
                 onClick={fetchTransactions}
@@ -766,6 +809,15 @@ export default function Sample() {
           onCancel={handleDuplicateCancel}
         />
       )}
+
+      <FilterButton
+        open={filterOpen}
+        onClose={() => setFilterOpen(false)}
+        filters={filters}
+        onChange={setFilters}
+        onReset={() => setFilters(DEFAULT_FILTERS)}
+        rows={rows}
+      />
     </div>
   );
 }
