@@ -186,6 +186,7 @@ export default function Sample() {
   const [isLoading, setIsLoading] = useState(true);
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState({ done: 0, total: 0 });
+  const [importLabel, setImportLabel] = useState("Importing to database...");
   const [fileName, setFileName] = useState("");
   const [search, setSearch] = useState("");
   const [editingRow, setEditingRow] = useState(null);
@@ -202,7 +203,8 @@ export default function Sample() {
   const [dragOverKey, setDragOverKey] = useState(null);
   const dragSrcKey = useRef(null);
 
-  // Duplicate import modal — null or { duplicates: string[], newRows: object[] }
+  // Duplicate import modal
+  // Shape: { duplicates: string[], duplicateRows: object[], existingDbRows: object[], newRows: object[] }
   const [duplicateModal, setDuplicateModal] = useState(null);
 
   const fileRef = useRef();
@@ -250,7 +252,6 @@ export default function Sample() {
         : true
     );
 
-  // ── Paginated slice ───────────────────────────────────────────────────────
   // Reset to page 1 whenever filters or search change
   useEffect(() => { setPage(1); }, [search, filters]);
 
@@ -364,9 +365,10 @@ export default function Sample() {
     return result;
   };
 
-  // ── Import logic ──────────────────────────────────────────────────────────
+  // ── Import logic (POST new records) ──────────────────────────────────────
 
   const runImport = async (mappedRows) => {
+    setImportLabel("Importing to database...");
     setImporting(true);
     setImportProgress({ done: 0, total: mappedRows.length });
     let successCount = 0, errorCount = 0;
@@ -424,26 +426,43 @@ export default function Sample() {
         mapExcelRow(row, statusesList, paymentStatusesList, measurementColIdx)
       );
 
-      let existingSkus = new Set();
+      // Fetch existing transactions — we need the full records (not just SKUs)
+      // so DuplicateChecker can diff field-by-field and so handleDuplicateUpdate
+      // can build its skuNo→_id map without an extra network call.
+      let existingTransactions = [];
       try {
         const res = await fetch(`${API}/transactions`).then(r => r.json());
-        if (res.success) {
-          res.data.forEach(r => { if (r.skuNo) existingSkus.add(String(r.skuNo).trim()); });
-        }
+        if (res.success) existingTransactions = res.data;
       } catch (e) {
         console.error("Could not fetch existing transactions for duplicate check:", e);
       }
+
+      const existingSkus = new Set(
+        existingTransactions.map(r => String(r.skuNo ?? "").trim()).filter(Boolean)
+      );
 
       const duplicateSkus = mappedRows
         .map(r => r.skuNo)
         .filter(sku => sku && existingSkus.has(String(sku).trim()));
 
-      const newMappedRows = mappedRows.filter(
-        r => r.skuNo && !existingSkus.has(String(r.skuNo).trim())
-      );
-
       if (duplicateSkus.length > 0) {
-        setDuplicateModal({ duplicates: duplicateSkus, newRows: newMappedRows });
+        const duplicateRows = mappedRows.filter(
+          r => r.skuNo && existingSkus.has(String(r.skuNo).trim())
+        );
+        const existingDbRows = existingTransactions.filter(
+          t => t.skuNo && existingSkus.has(String(t.skuNo).trim()) &&
+               duplicateSkus.includes(String(t.skuNo).trim())
+        );
+        const newMappedRows = mappedRows.filter(
+          r => r.skuNo && !existingSkus.has(String(r.skuNo).trim())
+        );
+
+        setDuplicateModal({
+          duplicates: duplicateSkus,
+          duplicateRows,
+          existingDbRows,
+          newRows: newMappedRows,
+        });
         return;
       }
 
@@ -459,6 +478,8 @@ export default function Sample() {
     else alert("Please select an Excel file (.xlsx or .xls)");
   };
 
+  // ── Duplicate modal handlers ──────────────────────────────────────────────
+
   const handleDuplicateSkip = async () => {
     const { newRows } = duplicateModal;
     setDuplicateModal(null);
@@ -467,6 +488,99 @@ export default function Sample() {
   };
 
   const handleDuplicateCancel = () => setDuplicateModal(null);
+
+  // changedRows  — only the rows DuplicateChecker determined actually differ
+  // alsoImportNew — true when user clicks "Update + Import All"
+  const handleDuplicateUpdate = async (changedRows, alsoImportNew = false) => {
+    // Capture newRows and the existing DB data before closing modal
+    const pendingNewRows = duplicateModal?.newRows ?? [];
+    const existingDbRows = duplicateModal?.existingDbRows ?? [];
+    setDuplicateModal(null);
+
+    // Build skuNo → _id map from the already-fetched DB records (no extra request needed)
+    const existingIdMap = {};
+    existingDbRows.forEach(t => {
+      if (t.skuNo) existingIdMap[String(t.skuNo).trim()] = t._id;
+    });
+
+    const totalOps = changedRows.length + (alsoImportNew ? pendingNewRows.length : 0);
+
+    if (totalOps === 0) return;
+
+    setImportLabel(alsoImportNew ? "Updating & importing..." : "Updating existing records...");
+    setImporting(true);
+    setImportProgress({ done: 0, total: totalOps });
+
+    let successCount = 0, errorCount = 0;
+    const errors = [];
+
+    // --- PUT changed records ---
+    for (let i = 0; i < changedRows.length; i++) {
+      const row = changedRows[i];
+      const id = existingIdMap[String(row.skuNo).trim()];
+
+      if (!id) {
+        errorCount++;
+        errors.push(`SKU ${row.skuNo}: could not find existing record ID — skipped`);
+        setImportProgress({ done: i + 1, total: totalOps });
+        continue;
+      }
+
+      try {
+        const response = await fetch(`${API}/transactions/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(row),
+        });
+        const responseData = await response.json();
+        if (response.ok && responseData.success) {
+          successCount++;
+        } else {
+          errorCount++;
+          errors.push(`SKU ${row.skuNo}: ${responseData.message || "Unknown error"}`);
+        }
+      } catch (e) {
+        errorCount++;
+        errors.push(`SKU ${row.skuNo}: ${e.message}`);
+      }
+      setImportProgress({ done: i + 1, total: totalOps });
+    }
+
+    // --- POST new records (only for "Update + Import All") ---
+    if (alsoImportNew) {
+      for (let i = 0; i < pendingNewRows.length; i++) {
+        try {
+          const response = await fetch(`${API}/transactions`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(pendingNewRows[i]),
+          });
+          const responseData = await response.json();
+          if (response.ok && responseData.success) {
+            successCount++;
+          } else {
+            errorCount++;
+            errors.push(`SKU ${pendingNewRows[i].skuNo}: ${responseData.message || "Unknown error"}`);
+          }
+        } catch (e) {
+          errorCount++;
+          errors.push(`SKU ${pendingNewRows[i].skuNo}: ${e.message}`);
+        }
+        setImportProgress({ done: changedRows.length + i + 1, total: totalOps });
+      }
+    }
+
+    setImporting(false);
+
+    const verb = alsoImportNew ? "Update + Import" : "Update";
+    let message = `${verb} completed!\n✅ Success: ${successCount}\n❌ Failed: ${errorCount}`;
+    if (errors.length > 0) {
+      message += `\n\nErrors:\n${errors.slice(0, 5).join("\n")}`;
+      if (errors.length > 5) message += `\n... and ${errors.length - 5} more`;
+    }
+    alert(message);
+    await fetchTransactions();
+  };
 
   // ── Row save handlers ─────────────────────────────────────────────────────
 
@@ -605,7 +719,7 @@ export default function Sample() {
         {importing && (
           <div className="mb-4 bg-white rounded-xl border border-slate-200 px-5 py-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[13px] font-medium text-slate-700">Importing to database...</span>
+              <span className="text-[13px] font-medium text-slate-700">{importLabel}</span>
               <span className="text-xs text-slate-400">{importProgress.done} / {importProgress.total}</span>
             </div>
             <div className="w-full bg-slate-100 rounded-full h-1.5">
@@ -676,11 +790,9 @@ export default function Sample() {
               <table className="w-full border-collapse font-[DM_Sans,sans-serif]">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
-                    {/* Fixed row-number column */}
                     <th className="px-3.5 py-[11px] text-left text-[11px] font-semibold text-slate-500 uppercase tracking-[0.05em] whitespace-nowrap border-r border-slate-100 sticky left-0 bg-slate-50 z-20 select-none">
                       #
                     </th>
-                    {/* Draggable column headers */}
                     {orderedColumns.map(col => {
                       const isOver = dragOverKey === col.key;
                       return (
@@ -742,7 +854,6 @@ export default function Sample() {
                       onClick={() => setEditingRow(row)}
                       className={`border-b border-slate-100 cursor-pointer transition-colors duration-100 hover:bg-blue-50 ${i % 2 === 0 ? "bg-white" : "bg-slate-50/60"}`}
                     >
-                      {/* Show the absolute row number, not the page-local index */}
                       <td className="px-3.5 py-2.5 text-xs text-slate-400 border-r border-slate-100 sticky left-0 bg-inherit z-10">
                         {(page - 1) * pageSize + i + 1}
                       </td>
@@ -757,7 +868,6 @@ export default function Sample() {
               </table>
             </div>
 
-            {/* ── Pagination footer (replaces the old footer) ── */}
             <Pagination
               total={filteredRows.length}
               page={page}
@@ -766,7 +876,6 @@ export default function Sample() {
               onPageSize={(size) => { setPageSize(size); setPage(1); }}
             />
 
-            {/* Source file label + refresh */}
             <div className="border-t border-slate-100 px-4 py-2 flex items-center justify-between bg-slate-50">
               <span className="text-xs text-slate-400">
                 {fileName && <span>· {fileName}</span>}
@@ -804,9 +913,12 @@ export default function Sample() {
       {duplicateModal && (
         <DuplicateChecker
           duplicates={duplicateModal.duplicates}
+          duplicateRows={duplicateModal.duplicateRows}
+          existingDbRows={duplicateModal.existingDbRows}
           newCount={duplicateModal.newRows.length}
           onSkip={handleDuplicateSkip}
           onCancel={handleDuplicateCancel}
+          onUpdate={handleDuplicateUpdate}
         />
       )}
 
