@@ -5,7 +5,7 @@ fontLink.rel = "stylesheet";
 fontLink.href = "https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap";
 document.head.appendChild(fontLink);
 
-const API = "http://localhost:5000/api";
+const API = import.meta.env.VITE_API_URL;
 
 // ─── REUSABLE COMPONENTS ─────────────────────────────────────────────────────
 

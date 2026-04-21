@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-const API = "http://localhost:5000/api";
+const API = import.meta.env.VITE_API_URL;
 
 const COLUMNS = [
   { key: "shippingNo", label: "Shipping No", type: "text" },

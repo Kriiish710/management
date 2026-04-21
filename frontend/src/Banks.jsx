@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-const API = "http://localhost:5000/api/banks";
+const API = `${import.meta.env.VITE_API_URL}/banks`;
 
 // ─── ICONS ────────────────────────────────────────────────────────────────────
 const Icon = {
