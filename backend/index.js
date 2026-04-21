@@ -32,7 +32,9 @@ import paymentStatusRoutes from './routes/paymentStatusRoutes.js'
 dotenv.config()
 
 const app = express()
-app.use(cors())
+app.use(cors({
+  origin: "https://management-backend-sv5o.onrender.com"
+}))
 app.use(express.json())
 
 // Register routes
