@@ -33,7 +33,7 @@ dotenv.config()
 
 const app = express()
 app.use(cors({
-  origin: "https://management-backend-sv5o.onrender.com"
+  origin: "https://management-frontend-2pcq.onrender.com"
 }))
 app.use(express.json())
 
