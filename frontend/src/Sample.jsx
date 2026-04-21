@@ -6,7 +6,7 @@ import DuplicateChecker from "../components/DuplicateChecker";
 import FilterButton, { DEFAULT_FILTERS } from "../components/FilterButton";
 import SortButton from "../components/SortButton";
 import Pagination from "../components/Pagination";
-import { exportExcel, exportPDF } from "../utils/exportUtils";
+import { exportExcel, exportPDF } from "../utils/Exportutils";
 
 const API = "http://localhost:5000/api";
 
