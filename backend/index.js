@@ -34,7 +34,7 @@ dotenv.config()
 const app = express()
 app.use(cors({
   origin: [
-    "https://management-nu-nine.vercel.app",
+    "https://management-frontend-2pcq.onrender.com",
     "http://localhost:5173"
   ]
 }))
