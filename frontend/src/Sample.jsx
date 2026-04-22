@@ -7,8 +7,8 @@ import FilterButton, { DEFAULT_FILTERS } from "../components/FilterButton";
 import SortButton from "../components/SortButton";
 import Pagination from "../components/Pagination";
 import { exportExcel, exportPDF } from "../utils/Exportutils";
-  
-const API = import.meta.env.VITE_API_URL; 
+
+const API = import.meta.env.VITE_API_URL;      
 
 const fontLink = document.createElement("link");
 fontLink.rel = "stylesheet";
