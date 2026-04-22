@@ -34,8 +34,8 @@ dotenv.config()
 const app = express()
 app.use(cors({
   origin: [
-    "https://your-app.vercel.app",  // replace with your actual Vercel URL
-    "http://localhost:5173"          // local dev
+    "https://management-nu-nine.vercel.app",
+    "http://localhost:5173"
   ]
 }))
 app.use(express.json())
