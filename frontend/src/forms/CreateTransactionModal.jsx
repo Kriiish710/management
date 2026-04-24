@@ -17,7 +17,7 @@ const CREATE_TABS = [
       { key: "weight", label: "Weight (ct)", type: "number" },
       { key: "certificateNo", label: "Cert. No.", type: "text" },
       { key: "synthesis", label: "Synthesis", type: "text" },
-      { key: "diamondType", label: "Type", type: "text" },
+      { key: "diamondType", label: "Type", type: "diamondType" },
       { key: "cut", label: "Cut", type: "text" },
       { key: "carat", label: "Ct", type: "number" },
       { key: "colour", label: "Colour", type: "text" },
@@ -267,6 +267,17 @@ export default function CreateTransactionModal({ onSave, onClose }) {
       <input type="number" step="any" value={form[f.key]} placeholder={f.hint || ""}
         onChange={e => handleChange(f.key, e.target.value)} className={base} />
     );
+    if (f.type === "diamondType") return (
+      <select value={form[f.key]} onChange={e => handleChange(f.key, e.target.value)} className={base}>
+        <option value="">— Select Type —</option>
+        <option value="Certified">Certified</option>
+        <option value="Miele">Miele</option>
+        <option value="Noncertified">Noncertified</option>
+        <option value="Natural">Natural</option>
+        <option value="Produced">Produced</option>
+      </select>
+    );
+
     return <input type="text" value={form[f.key]} onChange={e => handleChange(f.key, e.target.value)} className={base} />;
   };
 

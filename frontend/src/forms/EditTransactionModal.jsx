@@ -33,7 +33,7 @@ const COLUMNS = [
   { key: "inventoryDate", label: "Inventory Date", type: "date" },
   { key: "inventoryManager", label: "Inv. Manager", type: "text" },
   { key: "synthesis", label: "Synthesis", type: "text" },
-  { key: "diamondType", label: "Type", type: "text" },
+  { key: "diamondType", label: "Type", type: "diamondType" },
   { key: "cut", label: "Cut", type: "text" },
   { key: "carat", label: "Ct", type: "number" },
   { key: "colour", label: "Colour", type: "text" },
@@ -312,6 +312,16 @@ export default function EditTransactionModal({ transaction, onSave, onClose }) {
         placeholder={col.hint || ""}
         onChange={e => handleChange(col.key, e.target.value === "" ? "" : e.target.value)}
         className={baseInputClass} />
+    );
+    if (col.type === "diamondType") return (
+      <select value={value} onChange={e => handleChange(col.key, e.target.value)} className={baseInputClass}>
+        <option value="">— Select Type —</option>
+        <option value="Certified">Certified</option>
+        <option value="Miele">Miele</option>
+        <option value="Noncertified">Noncertified</option>
+        <option value="Natural">Natural</option>
+        <option value="Produced">Produced</option>
+      </select>
     );
     return <input type="text" value={value} onChange={e => handleChange(col.key, e.target.value)} className={baseInputClass} />;
   };
