@@ -198,77 +198,77 @@ const buildDiamondFromTransaction = (transaction) => {
         : undefined
 
   return {
-    skuNo:         transaction.skuNo,
-    shippingNo:    transaction.shippingNo,
-    shape:         transaction.shape,
-    weight:        transaction.weight,
-    carat:         transaction.carat,
-    cut:           transaction.cut,
-    colour:        transaction.colour,
-    clarity:       transaction.clarity,
-    synthesis:     transaction.synthesis,
+    skuNo: transaction.skuNo,
+    shippingNo: transaction.shippingNo,
+    shape: transaction.shape,
+    weight: transaction.weight,
+    carat: transaction.carat,
+    cut: transaction.cut,
+    colour: transaction.colour,
+    clarity: transaction.clarity,
+    synthesis: transaction.synthesis,
     measurement,
     certificateNo: transaction.certificateNo,
-    laboratory:    transaction.laboratory,
+    laboratory: transaction.laboratory,
   }
 }
 
 const buildPurchaseFromTransaction = (transaction, diamondId) => ({
-  diamond:            diamondId,
-  bank:               transaction.bank ?? undefined,
-  supplier:           transaction.supplier,
-  courier:            transaction.courier,
-  buyerAtSource:      transaction.buyerAtSource,
-  dateOfPurchase:     transaction.dateOfPurchase,
-  pricePerCaratUSD:   transaction.pricePerCaratUSD,
-  gstPercent:         transaction.gstPercent,
-  gstAmount:          transaction.gstAmount,
-  buyPriceTotal:      transaction.buyPriceTotal,
-  purchaseCurrency:   transaction.purchaseCurrency,
-  rateAtPurchase:     transaction.rateAtPurchase,
-  basePriceINR:       transaction.basePriceINR,
+  diamond: diamondId,
+  bank: transaction.bank ?? undefined,
+  supplier: transaction.supplier,
+  courier: transaction.courier,
+  buyerAtSource: transaction.buyerAtSource,
+  dateOfPurchase: transaction.dateOfPurchase,
+  pricePerCaratUSD: transaction.pricePerCaratUSD,
+  gstPercent: transaction.gstPercent,
+  gstAmount: transaction.gstAmount,
+  buyPriceTotal: transaction.buyPriceTotal,
+  purchaseCurrency: transaction.purchaseCurrency,
+  rateAtPurchase: transaction.rateAtPurchase,
+  basePriceINR: transaction.basePriceINR,
   correctionPriceUSD: transaction.correctionPriceUSD,
-  actualRate:         transaction.actualRate,
-  actualPriceINR:     transaction.actualPriceINR,
-  marketPL:           transaction.marketPL,
+  actualRate: transaction.actualRate,
+  actualPriceINR: transaction.actualPriceINR,
+  marketPL: transaction.marketPL,
 })
 
 const buildSaleFromTransaction = (transaction, diamondId, purchaseId) => ({
-  diamond:          diamondId,
-  purchase:         purchaseId,
-  bank:             transaction.bank ?? undefined,
-  dateOfSale:       transaction.dateOfSale,
-  buyerName:        transaction.buyerName,
-  saleAmount:       transaction.saleAmount,
-  saleCurrency:     transaction.saleCurrency,
+  diamond: diamondId,
+  purchase: purchaseId,
+  bank: transaction.bank ?? undefined,
+  dateOfSale: transaction.dateOfSale,
+  buyerName: transaction.buyerName,
+  saleAmount: transaction.saleAmount,
+  saleCurrency: transaction.saleCurrency,
   rateOnDateOfSale: transaction.rateOnDateOfSale,
-  saleBaseINR:      transaction.saleBaseINR,
+  saleBaseINR: transaction.saleBaseINR,
 })
 
 const buildPricingFromTransaction = (transaction, diamondId, purchaseId) => ({
-  diamond:                diamondId,
-  purchase:               purchaseId,
-  bank:                   transaction.bank ?? undefined,
-  markup:                 transaction.markup,
+  diamond: diamondId,
+  purchase: purchaseId,
+  bank: transaction.bank ?? undefined,
+  markup: transaction.markup,
   sellPriceLocalCurrency: transaction.sellPriceLocalCurrency,
-  localCurrency:          transaction.localCurrency,
-  typeOfExchange:         transaction.typeOfExchange,
-  priceRUB:               transaction.priceRUB,
-  priceUSD:               transaction.priceUSD,
-  pricePerCt:             transaction.pricePerCt,
-  rateRUB:                transaction.rateRUB,
+  localCurrency: transaction.localCurrency,
+  typeOfExchange: transaction.typeOfExchange,
+  priceRUB: transaction.priceRUB,
+  priceUSD: transaction.priceUSD,
+  pricePerCt: transaction.pricePerCt,
+  rateRUB: transaction.rateRUB,
 })
 
 const buildPLFromTransaction = (transaction, diamondId, purchaseId, saleId) => ({
-  diamond:              diamondId,
-  purchase:             purchaseId,
-  sale:                 saleId,
-  marginality:          transaction.marginality,
-  actualMarkup:         transaction.actualMarkup,
-  manager:              transaction.manager,
-  bonusPoints:          transaction.bonusPoints,
-  bonusAmount:          transaction.bonusAmount,
-  bonusRate:            transaction.bonusRate,
+  diamond: diamondId,
+  purchase: purchaseId,
+  sale: saleId,
+  marginality: transaction.marginality,
+  actualMarkup: transaction.actualMarkup,
+  manager: transaction.manager,
+  bonusPoints: transaction.bonusPoints,
+  bonusAmount: transaction.bonusAmount,
+  bonusRate: transaction.bonusRate,
   bonusInLocalCurrency: transaction.bonusInLocalCurrency,
 })
 
@@ -424,11 +424,11 @@ const deleteLinkedDocuments = async (transaction) => {
   const diamondId = diamond._id
 
   const deletions = [
-    ['PL',       () => PL.deleteMany({ diamond: diamondId })],
-    ['Pricing',  () => Pricing.deleteMany({ diamond: diamondId })],
-    ['Sale',     () => Sale.deleteMany({ diamond: diamondId })],
+    ['PL', () => PL.deleteMany({ diamond: diamondId })],
+    ['Pricing', () => Pricing.deleteMany({ diamond: diamondId })],
+    ['Sale', () => Sale.deleteMany({ diamond: diamondId })],
     ['Purchase', () => Purchase.deleteMany({ diamond: diamondId })],
-    ['Diamond',  () => Diamond.findByIdAndDelete(diamondId)],
+    ['Diamond', () => Diamond.findByIdAndDelete(diamondId)],
   ]
 
   for (const [name, fn] of deletions) {
@@ -445,6 +445,8 @@ const deleteLinkedDocuments = async (transaction) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const createTransaction = async (req, res) => {
+  console.log('diamondType received:', req.body.diamondType) // ← ADD THIS
+
   try {
     const resolvedStatuses = await resolveStatuses(req.body.status, req.body.paymentStatus)
     const computedFields = await calculateTransactionFields(req.body)

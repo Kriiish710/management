@@ -46,7 +46,7 @@ const COLUMNS = [
   { key: "inventoryDate", label: "Inv. Date", type: "date" },
   { key: "inventoryManager", label: "Inv. Mgr", type: "text" },
   { key: "synthesis", label: "Synth.", type: "text" },
-  { key: "type", label: "Type", type: "text" },
+  { key: "diamondType", label: "Type", type: "text" },
   { key: "cut", label: "Cut", type: "text" },
   { key: "carat", label: "Ct", type: "number" },
   { key: "colour", label: "Colour", type: "text" },
@@ -157,11 +157,6 @@ function formatCell(key, value) {
   return <span className="text-xs">{String(value)}</span>;
 }
 
-function isMeasurementString(str) {
-  if (!str || typeof str !== "string") return false;
-  return /^[\d.]+\s*[*×xX]\s*[\d.]+\s*[*×xX]\s*[\d.]+$/.test(str.trim());
-}
-
 function parseMeasurement(str) {
   if (!str || typeof str !== "string") return {};
   const parts = str.trim().split(/[*×xX]/).map(p => parseFloat(p.trim()));
@@ -170,15 +165,6 @@ function parseMeasurement(str) {
   if (parts.length >= 2 && !isNaN(parts[1])) result.width = parts[1];
   if (parts.length >= 3 && !isNaN(parts[2])) result.height = parts[2];
   return result;
-}
-
-function detectMeasurementColumnIndex(dataRows, fallback = 42) {
-  const samplesToCheck = dataRows.slice(0, 20);
-  for (let colIdx = 0; colIdx < 80; colIdx++) {
-    const hits = samplesToCheck.filter(row => isMeasurementString(String(row[colIdx] ?? "")));
-    if (hits.length > 0) return colIdx;
-  }
-  return fallback;
 }
 
 // ── Sort ──────────────────────────────────────────────────────────────────────
@@ -506,27 +492,137 @@ export default function Sample() {
     return partial ? partial._id : undefined;
   };
 
-  const mapExcelRow = (row, statusesList, paymentStatusesList, measurementColIdx) => {
-    const n = (idx) => { const v = row[idx]; if (v == null || v === "") return undefined; if (typeof v === "string" && v.startsWith("=")) return undefined; const num = Number(v); return isNaN(num) ? undefined : num; };
-    const s = (idx) => { const v = row[idx]; if (v == null) return ""; if (typeof v === "string" && v.startsWith("=")) return ""; return String(v); };
+  // ── Excel column mapping (verified against actual Excel headers) ───────────
+  // 0:  Shipping no          → shippingNo
+  // 1:  SKU no.              → skuNo
+  // 2:  Currier              → courier
+  // 3:  Supplier             → supplier
+  // 4:  Buyer                → buyerAtSource
+  // 5:  Date of purchase     → dateOfPurchase
+  // 6:  Shape                → shape
+  // 7:  Waight               → weight
+  // 8:  Number Of Certy      → certificateNo
+  // 9:  Price per ct. USD    → pricePerCaratUSD
+  // 10: GST %                → gstPercent
+  // 11: GST amount           → formula, skip
+  // 12: Buy price total      → formula, skip
+  // 13: Currency             → purchaseCurrency
+  // 14: Rate                 → formula, skip
+  // 15: Based currency INR   → formula, skip
+  // 16: Correction price USD → correctionPriceUSD
+  // 17: Actual rate          → actualRate
+  // 18: Actual price INR     → formula, skip
+  // 19: Market P/L           → formula, skip
+  // 20: Mark up              → markup
+  // 21: Sell price local     → formula, skip
+  // 22: Local currency       → localCurrency
+  // 23: Type of exchange     → typeOfExchange (bank name string)
+  // 24: Payment status       → paymentStatus (lookup by label)
+  // 25: Status               → status (lookup by label)
+  // 26: Wirehouse            → warehouse
+  // 27: Inventory date       → inventoryDate
+  // 28: Inventory manager    → inventoryManager
+  // 29: Inventory history    → skip
+  // 30: Синтез               → synthesis
+  // 31: Type                 → diamondType  ← THE FIX
+  // 32: Cut                  → cut
+  // 33: Ct                   → carat
+  // 34: Colour               → colour
+  // 35: Clarity              → clarity
+  // 36: Price (RUB)          → formula, skip
+  // 37: Price (USD)          → formula, skip
+  // 38: Price per ct         → formula, skip
+  // 39: Rate (RUB)           → formula, skip
+  // 40: Location             → location
+  // 41: Laboratory           → laboratory
+  // 42: Certificate          → formula (=I2), skip
+  // 43: Mesurment            → parsed → length, width, height
+  // 44: None                 → skip
+  // 45: Date of sale         → dateOfSale
+  // 46: Buyer (final)        → buyerName
+  // 47: Sale amount          → saleAmount
+  // 48: Currency (sale)      → saleCurrency
+  // 49: Rate on date of sale → rateOnDateOfSale
+  // 50: Base currency        → formula, skip
+  // 51: Base currency INR    → formula, skip
+  // 52: Marginality          → formula, skip
+  // 53: Actual markup        → formula, skip
+  // 54: Manager              → manager
+  // 55: Bonus points         → bonusPoints
+  // 56: Bonus amount         → formula, skip
+  // 57: Rate (bonus)         → bonusRate
+  // 58: Bonus in local       → formula, skip
+
+  const mapExcelRow = (row, statusesList, paymentStatusesList) => {
+    const n = (idx) => {
+      const v = row[idx];
+      if (v == null || v === "") return undefined;
+      if (typeof v === "string" && v.startsWith("=")) return undefined;
+      const num = Number(v);
+      return isNaN(num) ? undefined : num;
+    };
+    const s = (idx) => {
+      const v = row[idx];
+      if (v == null) return "";
+      if (typeof v === "string" && v.startsWith("=")) return "";
+      return String(v).trim();
+    };
+
     const statusId = findId(statusesList, s(25));
     const paymentStatusId = findId(paymentStatusesList, s(24));
-    const measurements = parseMeasurement(s(measurementColIdx));
+    const measurements = parseMeasurement(s(43));
+
     const result = {
-      shippingNo: s(0), skuNo: s(1), courier: s(2), supplier: s(3), buyerAtSource: s(4),
-      dateOfPurchase: excelDateToJS(row[5]), shape: s(6), weight: n(7), certificateNo: s(8),
-      pricePerCaratUSD: n(9), gstPercent: n(10) ?? 0, purchaseCurrency: s(13) || "USD",
-      correctionPriceUSD: n(16), actualRate: n(17), markup: n(20), localCurrency: s(22),
-      typeOfExchange: s(23), warehouse: s(26), inventoryDate: excelDateToJS(row[27]),
-      inventoryManager: s(28), synthesis: s(30),Type: s(30), cut: s(31), carat: n(32), colour: s(33),
-      clarity: s(34), location: s(39), laboratory: s(40),
-      length: measurements.length, width: measurements.width, height: measurements.height,
-      dateOfSale: excelDateToJS(row[44]), buyerName: s(45), saleAmount: n(46),
-      saleCurrency: s(47), rateOnDateOfSale: n(48), manager: s(53), bonusPoints: n(54),
+      shippingNo: s(0),
+      skuNo: s(1),
+      courier: s(2),
+      supplier: s(3),
+      buyerAtSource: s(4),
+      dateOfPurchase: excelDateToJS(row[5]),
+      shape: s(6),
+      weight: n(7),
+      certificateNo: s(8),
+      pricePerCaratUSD: n(9),
+      gstPercent: n(10) ?? 0,
+      purchaseCurrency: s(13) || "USD",
+      correctionPriceUSD: n(16),
+      actualRate: n(17),
+      markup: n(20),
+      localCurrency: s(22) || "RUB",
+      typeOfExchange: s(23),
+      warehouse: s(26),
+      inventoryDate: excelDateToJS(row[27]),
+      inventoryManager: s(28),
+      synthesis: s(30),
+      diamondType: s(31),   // ← col 31 = "Type"
+      cut: s(32),
+      carat: n(33),
+      colour: s(34),
+      clarity: s(35),
+      location: s(40),
+      laboratory: s(41),
+      length: measurements.length,
+      width: measurements.width,
+      height: measurements.height,
+      dateOfSale: excelDateToJS(row[45]),
+      buyerName: s(46),
+      saleAmount: n(47),
+      saleCurrency: s(48),
+      rateOnDateOfSale: n(49),
+      manager: s(54),
+      bonusPoints: n(55),
+      bonusRate: n(57),
     };
+
     if (statusId) result.status = statusId;
     if (paymentStatusId) result.paymentStatus = paymentStatusId;
-    Object.keys(result).forEach(k => { if (result[k] == null || result[k] === "") delete result[k]; });
+
+    // Remove empty/null/undefined values before sending to API
+    Object.keys(result).forEach(k => {
+      if (result[k] == null || result[k] === "") delete result[k];
+    });
+    console.log('ROW diamondType:', s(31), '| raw col31:', row[31]);
+
     return result;
   };
 
@@ -538,7 +634,11 @@ export default function Sample() {
     const errors = [];
     for (let i = 0; i < mappedRows.length; i++) {
       try {
-        const res = await fetch(`${API}/transactions`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(mappedRows[i]) });
+        const res = await fetch(`${API}/transactions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(mappedRows[i]),
+        });
         const data = await res.json();
         if (res.ok && data.success) successCount++;
         else { errorCount++; errors.push(`SKU ${mappedRows[i].skuNo}: ${data.message || "Unknown error"}`); }
@@ -546,7 +646,10 @@ export default function Sample() {
       setImportProgress({ done: i + 1, total: mappedRows.length });
     }
     let msg = `Import completed!\n✅ Success: ${successCount}\n❌ Failed: ${errorCount}`;
-    if (errors.length) { msg += `\n\nErrors:\n${errors.slice(0, 5).join("\n")}`; if (errors.length > 5) msg += `\n... and ${errors.length - 5} more`; }
+    if (errors.length) {
+      msg += `\n\nErrors:\n${errors.slice(0, 5).join("\n")}`;
+      if (errors.length > 5) msg += `\n... and ${errors.length - 5} more`;
+    }
     alert(msg);
     setImporting(false);
     await fetchTransactions();
@@ -560,15 +663,21 @@ export default function Sample() {
       const wb = XLSX.read(buffer, { type: "array", cellDates: false, raw: false, cellFormula: false });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
-      const dataRows = data.slice(1);
+      const dataRows = data.slice(1); // skip header row
       const validRows = dataRows.filter(row => row[1] && String(row[1]).trim() !== "");
       if (validRows.length === 0) { alert("No valid rows found with SKU numbers"); return; }
-      const measurementColIdx = detectMeasurementColumnIndex(validRows);
-      const mappedRows = validRows.map(row => mapExcelRow(row, statusesList, paymentStatusesList, measurementColIdx));
+
+      const mappedRows = validRows.map(row => mapExcelRow(row, statusesList, paymentStatusesList));
+
       let existingTransactions = [];
-      try { const r = await fetch(`${API}/transactions`).then(x => x.json()); if (r.success) existingTransactions = r.data; } catch (e) { console.error(e); }
+      try {
+        const r = await fetch(`${API}/transactions`).then(x => x.json());
+        if (r.success) existingTransactions = r.data;
+      } catch (e) { console.error(e); }
+
       const existingSkus = new Set(existingTransactions.map(r => String(r.skuNo ?? "").trim()).filter(Boolean));
       const duplicateSkus = mappedRows.map(r => r.skuNo).filter(sku => sku && existingSkus.has(String(sku).trim()));
+
       if (duplicateSkus.length > 0) {
         setDuplicateModal({
           duplicates: duplicateSkus,
@@ -579,7 +688,10 @@ export default function Sample() {
         return;
       }
       await runImport(mappedRows);
-    } catch (error) { console.error(error); alert("Failed to import file: " + error.message); }
+    } catch (error) {
+      console.error(error);
+      alert("Failed to import file: " + error.message);
+    }
   };
 
   const handleFile = (file) => {
@@ -590,7 +702,8 @@ export default function Sample() {
   // ── Duplicate handlers ────────────────────────────────────────────────────
 
   const handleDuplicateSkip = async () => {
-    const { newRows } = duplicateModal; setDuplicateModal(null);
+    const { newRows } = duplicateModal;
+    setDuplicateModal(null);
     if (newRows.length === 0) return;
     await runImport(newRows);
   };
@@ -601,31 +714,50 @@ export default function Sample() {
     const pendingNewRows = duplicateModal?.newRows ?? [];
     const existingDbRows = duplicateModal?.existingDbRows ?? [];
     setDuplicateModal(null);
+
     const existingIdMap = {};
     existingDbRows.forEach(t => { if (t.skuNo) existingIdMap[String(t.skuNo).trim()] = t._id; });
+
     const totalOps = changedRows.length + (alsoImportNew ? pendingNewRows.length : 0);
     if (totalOps === 0) return;
+
     setImportLabel(alsoImportNew ? "Updating & importing..." : "Updating existing records...");
     setImporting(true);
     setImportProgress({ done: 0, total: totalOps });
+
     let successCount = 0, errorCount = 0;
     const errors = [];
+
     for (let i = 0; i < changedRows.length; i++) {
       const row = changedRows[i];
       const id = existingIdMap[String(row.skuNo).trim()];
-      if (!id) { errorCount++; errors.push(`SKU ${row.skuNo}: ID not found`); setImportProgress({ done: i + 1, total: totalOps }); continue; }
+      if (!id) {
+        errorCount++;
+        errors.push(`SKU ${row.skuNo}: ID not found`);
+        setImportProgress({ done: i + 1, total: totalOps });
+        continue;
+      }
       try {
-        const res = await fetch(`${API}/transactions/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(row) });
+        const res = await fetch(`${API}/transactions/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(row),
+        });
         const data = await res.json();
         if (res.ok && data.success) successCount++;
         else { errorCount++; errors.push(`SKU ${row.skuNo}: ${data.message || "Unknown error"}`); }
       } catch (e) { errorCount++; errors.push(`SKU ${row.skuNo}: ${e.message}`); }
       setImportProgress({ done: i + 1, total: totalOps });
     }
+
     if (alsoImportNew) {
       for (let i = 0; i < pendingNewRows.length; i++) {
         try {
-          const res = await fetch(`${API}/transactions`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(pendingNewRows[i]) });
+          const res = await fetch(`${API}/transactions`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(pendingNewRows[i]),
+          });
           const data = await res.json();
           if (res.ok && data.success) successCount++;
           else { errorCount++; errors.push(`SKU ${pendingNewRows[i].skuNo}: ${data.message}`); }
@@ -633,10 +765,14 @@ export default function Sample() {
         setImportProgress({ done: changedRows.length + i + 1, total: totalOps });
       }
     }
+
     setImporting(false);
     const verb = alsoImportNew ? "Update + Import" : "Update";
     let msg = `${verb} completed!\n✅ Success: ${successCount}\n❌ Failed: ${errorCount}`;
-    if (errors.length) { msg += `\n\nErrors:\n${errors.slice(0, 5).join("\n")}`; if (errors.length > 5) msg += `\n... and ${errors.length - 5} more`; }
+    if (errors.length) {
+      msg += `\n\nErrors:\n${errors.slice(0, 5).join("\n")}`;
+      if (errors.length > 5) msg += `\n... and ${errors.length - 5} more`;
+    }
     alert(msg);
     await fetchTransactions();
   };
@@ -739,8 +875,6 @@ export default function Sample() {
             )}
           </button>
 
-
-          {/* Export dropdown — only when nothing selected and data exists */}
           {!hasSelection && rows.length > 0 && (
             <ExportDropdown
               onExportExcel={() => handleExportExcel(sortedRows)}
@@ -762,10 +896,7 @@ export default function Sample() {
             <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
             Create
           </button>
-
         </div>
-
-
       </div>
 
       {/* Body */}
@@ -785,7 +916,9 @@ export default function Sample() {
         )}
 
         {rows.length === 0 && !isLoading && !importing && (
-          <div onDragOver={e => { e.preventDefault(); setIsDragging(true); }} onDragLeave={() => setIsDragging(false)}
+          <div
+            onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+            onDragLeave={() => setIsDragging(false)}
             onDrop={e => { e.preventDefault(); setIsDragging(false); handleFile(e.dataTransfer.files[0]); }}
             className={`border-2 border-dashed rounded-2xl flex flex-col items-center justify-center py-20 px-5 text-center transition-all duration-200 ${isDragging ? "border-blue-600 bg-blue-50" : "border-slate-200 bg-white"}`}>
             <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center mb-4">
@@ -794,11 +927,13 @@ export default function Sample() {
             <p className="m-0 mb-1.5 text-[15px] font-semibold text-slate-900">No transactions yet</p>
             <p className="m-0 mb-5 text-[13px] text-slate-400">Create one manually or import an Excel file</p>
             <div className="flex items-center gap-3">
-              <button onClick={() => setShowCreate(true)} className="flex items-center gap-2 px-5 py-2.5 text-[13px] font-semibold text-white bg-blue-600 border-none rounded-[9px] cursor-pointer hover:bg-blue-700 font-[DM_Sans,sans-serif]">
+              <button onClick={() => setShowCreate(true)}
+                className="flex items-center gap-2 px-5 py-2.5 text-[13px] font-semibold text-white bg-blue-600 border-none rounded-[9px] cursor-pointer hover:bg-blue-700 font-[DM_Sans,sans-serif]">
                 <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
                 Create Transaction
               </button>
-              <button onClick={() => fileRef.current.click()} className="flex items-center gap-2 px-5 py-2.5 text-[13px] font-medium text-slate-600 bg-white border border-slate-200 rounded-[9px] cursor-pointer hover:bg-slate-50 font-[DM_Sans,sans-serif]">
+              <button onClick={() => fileRef.current.click()}
+                className="flex items-center gap-2 px-5 py-2.5 text-[13px] font-medium text-slate-600 bg-white border border-slate-200 rounded-[9px] cursor-pointer hover:bg-slate-50 font-[DM_Sans,sans-serif]">
                 <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M8 12l4-4 4 4M12 8v8" /></svg>
                 Import Excel
               </button>
@@ -836,8 +971,11 @@ export default function Sample() {
                       const isSorted = sortRules.some(r => r.key === col.key);
                       return (
                         <th key={col.key} draggable
-                          onDragStart={e => handleColDragStart(e, col.key)} onDragOver={e => handleColDragOver(e, col.key)}
-                          onDragLeave={handleColDragLeave} onDrop={e => handleColDrop(e, col.key)} onDragEnd={handleColDragEnd}
+                          onDragStart={e => handleColDragStart(e, col.key)}
+                          onDragOver={e => handleColDragOver(e, col.key)}
+                          onDragLeave={handleColDragLeave}
+                          onDrop={e => handleColDrop(e, col.key)}
+                          onDragEnd={handleColDragEnd}
                           onClick={() => handleHeaderClick(col.key)}
                           className="px-2 py-[11px] text-left text-[11px] font-semibold uppercase tracking-[0.05em] whitespace-nowrap border-r border-slate-100 select-none"
                           style={{
@@ -893,7 +1031,8 @@ export default function Sample() {
                         </td>
 
                         {orderedColumns.map(col => (
-                          <td key={col.key} className="px-2 py-2.5 border-r border-slate-100 whitespace-nowrap text-slate-700 cursor-pointer"
+                          <td key={col.key}
+                            className="px-2 py-2.5 border-r border-slate-100 whitespace-nowrap text-slate-700 cursor-pointer"
                             onClick={() => isSelected ? toggleRow(row._id, { stopPropagation: () => { } }) : setEditingRow(row)}>
                             {formatCell(col.key, row[col.key])}
                           </td>
@@ -905,8 +1044,13 @@ export default function Sample() {
               </table>
             </div>
 
-            <Pagination total={filteredRows.length} page={page} pageSize={pageSize}
-              onPage={setPage} onPageSize={(size) => { setPageSize(size); setPage(1); }} />
+            <Pagination
+              total={filteredRows.length}
+              page={page}
+              pageSize={pageSize}
+              onPage={setPage}
+              onPageSize={(size) => { setPageSize(size); setPage(1); }}
+            />
 
             <div className="border-t border-slate-100 px-4 py-2 flex items-center justify-between bg-slate-50">
               <span className="text-xs text-slate-400">{fileName && <span>· {fileName}</span>}</span>
@@ -924,10 +1068,12 @@ export default function Sample() {
 
       {/* Floating selection bar */}
       {hasSelection && (
-        <SelectionBar count={selectedIds.size}
+        <SelectionBar
+          count={selectedIds.size}
           onExportExcel={() => handleExportExcel(selectedRows)}
           onExportPDF={() => handleExportPDF(selectedRows)}
-          onClear={clearSelection} />
+          onClear={clearSelection}
+        />
       )}
 
       {/* Modals */}
@@ -936,16 +1082,33 @@ export default function Sample() {
 
       {duplicateModal && (
         <DuplicateChecker
-          duplicates={duplicateModal.duplicates} duplicateRows={duplicateModal.duplicateRows}
-          existingDbRows={duplicateModal.existingDbRows} newCount={duplicateModal.newRows.length}
-          onSkip={handleDuplicateSkip} onCancel={handleDuplicateCancel} onUpdate={handleDuplicateUpdate} />
+          duplicates={duplicateModal.duplicates}
+          duplicateRows={duplicateModal.duplicateRows}
+          existingDbRows={duplicateModal.existingDbRows}
+          newCount={duplicateModal.newRows.length}
+          onSkip={handleDuplicateSkip}
+          onCancel={handleDuplicateCancel}
+          onUpdate={handleDuplicateUpdate}
+        />
       )}
 
-      <FilterButton open={filterOpen} onClose={() => setFilterOpen(false)}
-        filters={filters} onChange={setFilters} onReset={() => setFilters(DEFAULT_FILTERS)} rows={rows} />
+      <FilterButton
+        open={filterOpen}
+        onClose={() => setFilterOpen(false)}
+        filters={filters}
+        onChange={setFilters}
+        onReset={() => setFilters(DEFAULT_FILTERS)}
+        rows={rows}
+      />
 
-      <SortButton open={sortOpen} onClose={() => setSortOpen(false)}
-        columns={COLUMNS} sortRules={sortRules} onChange={setSortRules} onReset={() => setSortRules([])} />
+      <SortButton
+        open={sortOpen}
+        onClose={() => setSortOpen(false)}
+        columns={COLUMNS}
+        sortRules={sortRules}
+        onChange={setSortRules}
+        onReset={() => setSortRules([])}
+      />
     </div>
   );
 }

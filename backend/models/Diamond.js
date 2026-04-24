@@ -12,6 +12,7 @@ const diamondSchema = new mongoose.Schema({
   colour: { type: String },
   clarity: { type: String },
   synthesis: { type: String }, // CVD, natural etc.
+  diamondType: { type: String }, // Loose, Mounted etc.
   measurement: { type: String },
 
   // Certificate

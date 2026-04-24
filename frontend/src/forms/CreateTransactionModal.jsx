@@ -17,6 +17,7 @@ const CREATE_TABS = [
       { key: "weight", label: "Weight (ct)", type: "number" },
       { key: "certificateNo", label: "Cert. No.", type: "text" },
       { key: "synthesis", label: "Synthesis", type: "text" },
+      { key: "diamondType", label: "Type", type: "text" },
       { key: "cut", label: "Cut", type: "text" },
       { key: "carat", label: "Ct", type: "number" },
       { key: "colour", label: "Colour", type: "text" },
@@ -179,7 +180,7 @@ export default function CreateTransactionModal({ onSave, onClose }) {
   const [form, setForm] = useState({
     shippingNo: "", skuNo: "", courier: "", supplier: "",
     buyerAtSource: "", dateOfPurchase: "", shape: "",
-    weight: "", certificateNo: "", synthesis: "", cut: "",
+    weight: "", certificateNo: "", synthesis: "", diamondType: "", cut: "",
     carat: "", colour: "", clarity: "", laboratory: "",
     length: "", width: "", height: "",
     location: "", warehouse: "",

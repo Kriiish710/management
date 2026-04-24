@@ -33,6 +33,7 @@ const COLUMNS = [
   { key: "inventoryDate", label: "Inventory Date", type: "date" },
   { key: "inventoryManager", label: "Inv. Manager", type: "text" },
   { key: "synthesis", label: "Synthesis", type: "text" },
+  { key: "diamondType", label: "Type", type: "text" },
   { key: "cut", label: "Cut", type: "text" },
   { key: "carat", label: "Ct", type: "number" },
   { key: "colour", label: "Colour", type: "text" },
@@ -64,7 +65,7 @@ const COLUMNS = [
 const EDIT_TABS = [
   {
     id: "general", label: "General",
-    keys: ["shippingNo", "skuNo", "courier", "supplier", "buyerAtSource", "dateOfPurchase", "shape", "weight", "certificateNo", "synthesis", "cut", "carat", "colour", "clarity", "laboratory", "length", "width", "height", "location", "warehouse", "inventoryDate", "inventoryManager", "status", "paymentStatus"],
+    keys: ["shippingNo", "skuNo", "courier", "supplier", "buyerAtSource", "dateOfPurchase", "shape", "weight", "certificateNo", "synthesis", "diamondType", "cut", "carat", "colour", "clarity", "laboratory", "length", "width", "height", "location", "warehouse", "inventoryDate", "inventoryManager", "status", "paymentStatus"],
   },
   {
     id: "pricing", label: "Pricing",
@@ -183,7 +184,7 @@ export default function EditTransactionModal({ transaction, onSave, onClose }) {
       const parts = (str || "").split("*");
       return {
         length: parseFloat(parts[0]) || "",
-        width:  parseFloat(parts[1]) || "",
+        width: parseFloat(parts[1]) || "",
         height: parseFloat(parts[2]) || "",
       };
     };
