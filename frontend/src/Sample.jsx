@@ -857,7 +857,7 @@ export default function Sample() {
                               </svg>
                             </span>
                             {col.label}
-                            {col.readOnly && <span className="text-slate-300 font-normal normal-case text-[10px]">auto</span>}
+                            {col.readOnly && <span className="text-slate-300 font-normal normal-case text-[10px]"></span>}
                             <SortIndicator colKey={col.key} sortRules={sortRules} />
                           </span>
                         </th>
