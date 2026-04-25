@@ -164,17 +164,11 @@ function calcPreview(form, bank) {
 const fmt = (v, decimals = 2) =>
   v == null ? "—" : Number(v).toLocaleString("en-IN", { maximumFractionDigits: decimals });
 
-function getLabel(value) {
-  if (!value) return "";
-  if (typeof value === "object" && value.label) return value.label;
-  if (typeof value === "object" && value.name) return value.name;
-  return String(value);
-}
-
 export default function EditTransactionModal({ transaction, onSave, onClose }) {
   const [banks, setBanks] = useState([]);
   const [statuses, setStatuses] = useState([]);
   const [paymentStatuses, setPaymentStatuses] = useState([]);
+  const [diamondTypes, setDiamondTypes] = useState([]);
   const [activeTab, setActiveTab] = useState("general");
   const [saving, setSaving] = useState(false);
   const [selectedBank, setSelectedBank] = useState(null);
@@ -219,6 +213,7 @@ export default function EditTransactionModal({ transaction, onSave, onClose }) {
     }).catch(() => { });
     fetch(`${API}/statuses/active`).then(r => r.json()).then(d => { if (d.success) setStatuses(d.data); }).catch(() => { });
     fetch(`${API}/payment-statuses/active`).then(r => r.json()).then(d => { if (d.success) setPaymentStatuses(d.data); }).catch(() => { });
+    fetch(`${API}/diamond-types/active`).then(r => r.json()).then(d => { if (d.success) setDiamondTypes(d.data); }).catch(() => { });
   }, []);
 
   const handleChange = (key, value) => {
@@ -303,6 +298,23 @@ export default function EditTransactionModal({ transaction, onSave, onClose }) {
         {paymentStatuses.map(s => <option key={s._id} value={s._id}>{s.label}</option>)}
       </select>
     );
+    if (col.type === "diamondType") return (
+      <select value={value} onChange={e => handleChange(col.key, e.target.value)} className={baseInputClass}>
+        <option value="">— Select Type —</option>
+        {diamondTypes.length > 0
+          ? diamondTypes.map(dt => <option key={dt._id} value={dt.label}>{dt.label}</option>)
+          : (
+            <>
+              <option value="Certified">Certified</option>
+              <option value="Miele">Miele</option>
+              <option value="Noncertified">Noncertified</option>
+              <option value="Natural">Natural</option>
+              <option value="Produced">Produced</option>
+            </>
+          )
+        }
+      </select>
+    );
     if (col.type === "date") {
       const dv = value ? String(value).split("T")[0] : "";
       return <input type="date" value={dv} onChange={e => handleChange(col.key, e.target.value)} className={baseInputClass} />;
@@ -312,16 +324,6 @@ export default function EditTransactionModal({ transaction, onSave, onClose }) {
         placeholder={col.hint || ""}
         onChange={e => handleChange(col.key, e.target.value === "" ? "" : e.target.value)}
         className={baseInputClass} />
-    );
-    if (col.type === "diamondType") return (
-      <select value={value} onChange={e => handleChange(col.key, e.target.value)} className={baseInputClass}>
-        <option value="">— Select Type —</option>
-        <option value="Certified">Certified</option>
-        <option value="Miele">Miele</option>
-        <option value="Noncertified">Noncertified</option>
-        <option value="Natural">Natural</option>
-        <option value="Produced">Produced</option>
-      </select>
     );
     return <input type="text" value={value} onChange={e => handleChange(col.key, e.target.value)} className={baseInputClass} />;
   };
@@ -397,5 +399,3 @@ export default function EditTransactionModal({ transaction, onSave, onClose }) {
     </div>
   );
 }
-
-

@@ -471,16 +471,18 @@ export default function Sample() {
   };
 
   const fetchMappingsFresh = async () => {
-    let statusesList = [], paymentStatusesList = [];
+    let statusesList = [], paymentStatusesList = [], diamondTypesList = [];
     try {
-      const [sRes, pRes] = await Promise.all([
+      const [sRes, pRes, dRes] = await Promise.all([
         fetch(`${API}/statuses/active`).then(r => r.json()),
         fetch(`${API}/payment-statuses/active`).then(r => r.json()),
+        fetch(`${API}/diamond-types/active`).then(r => r.json()),
       ]);
       if (sRes.success) statusesList = sRes.data;
       if (pRes.success) paymentStatusesList = pRes.data;
+      if (dRes.success) diamondTypesList = dRes.data;
     } catch (e) { console.error(e); }
-    return { statusesList, paymentStatusesList };
+    return { statusesList, paymentStatusesList, diamondTypesList };
   };
 
   const findId = (list, label) => {
@@ -553,7 +555,7 @@ export default function Sample() {
   // 57: Rate (bonus)         → bonusRate
   // 58: Bonus in local       → formula, skip
 
-  const mapExcelRow = (row, statusesList, paymentStatusesList) => {
+  const mapExcelRow = (row, statusesList, paymentStatusesList, diamondTypesList) => {
     const n = (idx) => {
       const v = row[idx];
       if (v == null || v === "") return undefined;
@@ -570,6 +572,7 @@ export default function Sample() {
 
     const statusId = findId(statusesList, s(25));
     const paymentStatusId = findId(paymentStatusesList, s(24));
+    const diamondTypeId = findId(diamondTypesList, s(31));
     const measurements = parseMeasurement(s(43));
 
     const result = {
@@ -594,7 +597,6 @@ export default function Sample() {
       inventoryDate: excelDateToJS(row[27]),
       inventoryManager: s(28),
       synthesis: s(30),
-      diamondType: s(31),   // ← col 31 = "Type"
       cut: s(32),
       carat: n(33),
       colour: s(34),
@@ -616,6 +618,8 @@ export default function Sample() {
 
     if (statusId) result.status = statusId;
     if (paymentStatusId) result.paymentStatus = paymentStatusId;
+    if (diamondTypeId) result.diamondType = diamondTypeId;
+
 
     // Remove empty/null/undefined values before sending to API
     Object.keys(result).forEach(k => {
@@ -657,7 +661,7 @@ export default function Sample() {
 
   const parseExcel = async (file) => {
     setFileName(file.name);
-    const { statusesList, paymentStatusesList } = await fetchMappingsFresh();
+    const { statusesList, paymentStatusesList, diamondTypesList } = await fetchMappingsFresh();
     try {
       const buffer = await file.arrayBuffer();
       const wb = XLSX.read(buffer, { type: "array", cellDates: false, raw: false, cellFormula: false });
@@ -667,7 +671,7 @@ export default function Sample() {
       const validRows = dataRows.filter(row => row[1] && String(row[1]).trim() !== "");
       if (validRows.length === 0) { alert("No valid rows found with SKU numbers"); return; }
 
-      const mappedRows = validRows.map(row => mapExcelRow(row, statusesList, paymentStatusesList));
+      const mappedRows = validRows.map(row => mapExcelRow(row, statusesList, paymentStatusesList, diamondTypesList));
 
       let existingTransactions = [];
       try {

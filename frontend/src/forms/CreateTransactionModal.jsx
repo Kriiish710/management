@@ -25,7 +25,8 @@ const CREATE_TABS = [
       { key: "laboratory", label: "Laboratory", type: "text" },
       { key: "length", label: "Length (mm)", type: "number" },
       { key: "width", label: "Width (mm)", type: "number" },
-      { key: "height", label: "Height (mm)", type: "number" }, { key: "location", label: "Location", type: "text" },
+      { key: "height", label: "Height (mm)", type: "number" },
+      { key: "location", label: "Location", type: "text" },
       { key: "warehouse", label: "Warehouse", type: "text" },
       { key: "inventoryDate", label: "Inventory Date", type: "date" },
       { key: "inventoryManager", label: "Inv. Manager", type: "text" },
@@ -82,31 +83,16 @@ const CREATE_TABS = [
   },
 ];
 
-// ── Formulas ─────────────────────────────────────────────────────────────────
-// gstAmount        = weight * pricePerCaratUSD * (gstPercent / 100)
-// buyPriceTotal    = weight * pricePerCaratUSD
-// basePriceINR     = buyPriceTotal * bank.usdToInr
-// actualPriceINR   = correctionUSD * weight * actualRate
-// marketPL         = actualPriceINR - basePriceINR
-// sellPrice (INR)  = actualPriceINR * (1 + markup / 100)
-// priceRUB         = ROUNDUP(sellPrice_INR * inrToRub, -2)  → ceil to nearest 100
-// priceUSD         = sellPrice_INR / usdToInr
-// saleBaseINR      = saleAmount * rateOnDateOfSale
-// marginality      = saleBaseINR - basePriceINR
-// actualMarkup     = saleBaseINR / (basePriceINR / 100) - 100
-// bonusAmount      = (actualPriceINR / 100) * bonusPoints
-// bonusLocal       = bonusAmount / bonusRate
 function calcPreview(form, bank) {
   const n = (v) => { const x = Number(v); return isNaN(x) || v === "" || v === null || v === undefined ? null : x; };
 
   const weight = n(form.weight);
   const pricePerCaratUSD = n(form.pricePerCaratUSD);
   const gstPercent = n(form.gstPercent) ?? 0;
-  const usdToInr = bank?.usdToInr ?? null;   // e.g. 94.2
-  const inrToRub = bank?.inrToRub ?? null;   // e.g. 1.173
+  const usdToInr = bank?.usdToInr ?? null;
+  const inrToRub = bank?.inrToRub ?? null;
   const correctionUSD = n(form.correctionPriceUSD) ?? pricePerCaratUSD;
   const actualRate = n(form.actualRate) ?? usdToInr;
-  // markup is now entered as a percentage integer, e.g. 20 means 20%
   const markupRaw = n(form.markup);
   const markup = markupRaw != null ? markupRaw / 100 : null;
   const saleAmount = n(form.saleAmount);
@@ -129,16 +115,12 @@ function calcPreview(form, bank) {
   const marketPL = actualPriceINR != null && basePriceINR != null
     ? actualPriceINR - basePriceINR : null;
 
-  // sellPrice in INR: apply markup on top of actualPriceINR
   const sellPrice = actualPriceINR != null && markup != null
     ? actualPriceINR * (1 + markup) : null;
 
-  // priceRUB: convert sellPrice (INR) → RUB, round up to nearest 100
-  // inrToRub in bank data = "1 RUB costs X INR", so divide INR by rate to get RUB
   const priceRUB = sellPrice != null && inrToRub != null
     ? Math.ceil((sellPrice / inrToRub) / 100) * 100 : null;
 
-  // priceUSD: convert sellPrice (INR) → USD
   const priceUSD = sellPrice != null && usdToInr != null
     ? sellPrice / usdToInr : null;
 
@@ -173,6 +155,7 @@ export default function CreateTransactionModal({ onSave, onClose }) {
   const [banks, setBanks] = useState([]);
   const [statuses, setStatuses] = useState([]);
   const [paymentStatuses, setPaymentStatuses] = useState([]);
+  const [diamondTypes, setDiamondTypes] = useState([]);
   const [activeTab, setActiveTab] = useState("general");
   const [saving, setSaving] = useState(false);
   const [selectedBank, setSelectedBank] = useState(null);
@@ -200,6 +183,7 @@ export default function CreateTransactionModal({ onSave, onClose }) {
     fetch(`${API}/banks/active`).then(r => r.json()).then(d => { if (d.success) setBanks(d.data); }).catch(() => { });
     fetch(`${API}/statuses/active`).then(r => r.json()).then(d => { if (d.success) setStatuses(d.data); }).catch(() => { });
     fetch(`${API}/payment-statuses/active`).then(r => r.json()).then(d => { if (d.success) setPaymentStatuses(d.data); }).catch(() => { });
+    fetch(`${API}/diamond-types/active`).then(r => r.json()).then(d => { if (d.success) setDiamondTypes(d.data); }).catch(() => { });
   }, []);
 
   const handleChange = (key, value) => {
@@ -260,22 +244,29 @@ export default function CreateTransactionModal({ onSave, onClose }) {
         {paymentStatuses.map(s => <option key={s._id} value={s._id}>{s.label}</option>)}
       </select>
     );
+    if (f.type === "diamondType") return (
+      <select value={form[f.key]} onChange={e => handleChange(f.key, e.target.value)} className={base}>
+        <option value="">— Select Type —</option>
+        {diamondTypes.length > 0
+          ? diamondTypes.map(dt => <option key={dt._id} value={dt.label}>{dt.label}</option>)
+          : (
+            <>
+              <option value="Certified">Certified</option>
+              <option value="Miele">Miele</option>
+              <option value="Noncertified">Noncertified</option>
+              <option value="Natural">Natural</option>
+              <option value="Produced">Produced</option>
+            </>
+          )
+        }
+      </select>
+    );
     if (f.type === "date") return (
       <input type="date" value={form[f.key]} onChange={e => handleChange(f.key, e.target.value)} className={base} />
     );
     if (f.type === "number") return (
       <input type="number" step="any" value={form[f.key]} placeholder={f.hint || ""}
         onChange={e => handleChange(f.key, e.target.value)} className={base} />
-    );
-    if (f.type === "diamondType") return (
-      <select value={form[f.key]} onChange={e => handleChange(f.key, e.target.value)} className={base}>
-        <option value="">— Select Type —</option>
-        <option value="Certified">Certified</option>
-        <option value="Miele">Miele</option>
-        <option value="Noncertified">Noncertified</option>
-        <option value="Natural">Natural</option>
-        <option value="Produced">Produced</option>
-      </select>
     );
 
     return <input type="text" value={form[f.key]} onChange={e => handleChange(f.key, e.target.value)} className={base} />;

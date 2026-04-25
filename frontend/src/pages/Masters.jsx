@@ -93,8 +93,6 @@ function BanksTab() {
 
   return (
     <div className="space-y-5">
-
-      {/* Form */}
       <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
         <p className="m-0 mb-3 text-[11px] font-semibold text-slate-500 uppercase tracking-[0.05em]">
           {editingId ? "Edit Bank" : "Add New Bank"}
@@ -135,7 +133,6 @@ function BanksTab() {
         </div>
       </div>
 
-      {/* List */}
       {loading ? (
         <div className="flex justify-center py-10">
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
@@ -175,7 +172,7 @@ function BanksTab() {
   );
 }
 
-// ─── STATUS TAB ───────────────────────────────────────────────────────────────
+// ─── STATUS TAB (shared for Status, Payment Status, Diamond Type) ─────────────
 
 function StatusTab({ endpoint, label }) {
   const [items, setItems] = useState([]);
@@ -230,10 +227,15 @@ function StatusTab({ endpoint, label }) {
 
   const inputClass = "w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white outline-none font-[DM_Sans,sans-serif] focus:border-blue-400";
 
+  const getPlaceholder = () => {
+    if (label === "Status") return "e.g. In Stock";
+    if (label === "Payment Status") return "e.g. Paid";
+    if (label === "Diamond Type") return "e.g. Certified";
+    return "e.g. Label";
+  };
+
   return (
     <div className="space-y-5">
-
-      {/* Form */}
       <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
         <p className="m-0 mb-3 text-[11px] font-semibold text-slate-500 uppercase tracking-[0.05em]">
           {editingId ? `Edit ${label}` : `Add New ${label}`}
@@ -241,7 +243,7 @@ function StatusTab({ endpoint, label }) {
         <div className="grid grid-cols-4 gap-3 mb-3">
           <div className="col-span-2">
             <label className="block text-[11px] font-medium text-slate-500 mb-1">Label</label>
-            <input type="text" placeholder={`e.g. ${label === "Status" ? "In Stock" : "Paid"}`} value={form.label}
+            <input type="text" placeholder={getPlaceholder()} value={form.label}
               onChange={e => setForm(p => ({ ...p, label: e.target.value }))} className={inputClass} />
           </div>
           <div>
@@ -274,13 +276,12 @@ function StatusTab({ endpoint, label }) {
         </div>
       </div>
 
-      {/* List */}
       {loading ? (
         <div className="flex justify-center py-10">
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
           <div style={{ animation: "spin 0.7s linear infinite" }} className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full" />
         </div>
-      ) : items.length === 0 ? <EmptyState label={label.toLowerCase() + "es"} /> : (
+      ) : items.length === 0 ? <EmptyState label={label.toLowerCase() + "s"} /> : (
         <div className="rounded-xl border border-slate-200 overflow-hidden">
           <table className="w-full border-collapse font-[DM_Sans,sans-serif]">
             <thead>
@@ -320,9 +321,42 @@ function StatusTab({ endpoint, label }) {
 // ─── MASTERS PAGE ─────────────────────────────────────────────────────────────
 
 const TABS = [
-  { id: "banks", label: "Banks", icon: <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 10v11M12 10v11M16 10v11" /></svg> },
-  { id: "status", label: "Status", icon: <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> },
-  { id: "paymentStatus", label: "Payment Status", icon: <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z" /></svg> },
+  {
+    id: "banks",
+    label: "Banks",
+    icon: (
+      <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 10v11M12 10v11M16 10v11" />
+      </svg>
+    ),
+  },
+  {
+    id: "status",
+    label: "Status",
+    icon: (
+      <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    ),
+  },
+  {
+    id: "paymentStatus",
+    label: "Payment Status",
+    icon: (
+      <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z" />
+      </svg>
+    ),
+  },
+  {
+    id: "diamondType",
+    label: "Diamond Types",
+    icon: (
+      <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+      </svg>
+    ),
+  },
 ];
 
 export default function Masters({ onBack }) {
@@ -335,7 +369,10 @@ export default function Masters({ onBack }) {
       <div className="bg-white border-b border-slate-200 px-7 flex items-center justify-between h-[60px] sticky top-0 z-30 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <div className="flex items-center gap-3">
           <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><circle cx="12" cy="12" r="3" /></svg>
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
           </div>
           <span className="text-[17px] font-bold text-slate-900">Manage Masters</span>
         </div>
@@ -358,9 +395,10 @@ export default function Masters({ onBack }) {
         </div>
 
         {/* Content */}
-        {activeTab === "banks" && <BanksTab />}
-        {activeTab === "status" && <StatusTab endpoint="statuses" label="Status" />}
+        {activeTab === "banks"         && <BanksTab />}
+        {activeTab === "status"        && <StatusTab endpoint="statuses" label="Status" />}
         {activeTab === "paymentStatus" && <StatusTab endpoint="payment-statuses" label="Payment Status" />}
+        {activeTab === "diamondType"   && <StatusTab endpoint="diamond-types" label="Diamond Type" />}
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import Transaction from '../models/Transaction.js'
 import Diamond from '../models/Diamond.js'
+import DiamondType from '../models/Diamondtype.js'
 import Bank from '../models/Bank.js'
 import Status from '../models/Status.js'
 import PaymentStatus from '../models/PaymentStatus.js'
@@ -30,9 +31,10 @@ const findBankByName = async (nameStr) => {
 }
 
 // Resolve status and payment status ObjectIds
-const resolveStatuses = async (statusVal, paymentStatusVal) => {
+const resolveStatuses = async (statusVal, paymentStatusVal, diamondTypeVal) => {
   const result = {}
 
+  // STATUS (existing)
   if (statusVal !== undefined) {
     if (mongoose.Types.ObjectId.isValid(statusVal)) {
       const exists = await Status.findById(statusVal)
@@ -47,17 +49,35 @@ const resolveStatuses = async (statusVal, paymentStatusVal) => {
     }
   }
 
+  // PAYMENT STATUS (existing)
   if (paymentStatusVal !== undefined) {
     if (mongoose.Types.ObjectId.isValid(paymentStatusVal)) {
       const exists = await PaymentStatus.findById(paymentStatusVal)
       if (!exists) throw new Error('Invalid payment status')
       result.paymentStatus = exists._id
     } else if (paymentStatusVal) {
-      const paymentStatusDoc = await PaymentStatus.findOne({ label: paymentStatusVal })
-      if (!paymentStatusDoc) throw new Error('Invalid payment status')
-      result.paymentStatus = paymentStatusDoc._id
+      const doc = await PaymentStatus.findOne({ label: paymentStatusVal })
+      if (!doc) throw new Error('Invalid payment status')
+      result.paymentStatus = doc._id
     } else {
       result.paymentStatus = null
+    }
+  }
+
+  // 🆕 DIAMOND TYPE
+  if (diamondTypeVal !== undefined) {
+    if (mongoose.Types.ObjectId.isValid(diamondTypeVal)) {
+      const exists = await DiamondType.findById(diamondTypeVal)
+      if (!exists) throw new Error('Invalid diamond type')
+      result.diamondType = exists._id
+    } else if (diamondTypeVal) {
+      const doc = await DiamondType.findOne({
+        label: { $regex: `^${diamondTypeVal}$`, $options: 'i' }
+      })      
+      if (!doc) throw new Error('Invalid diamond type')
+      result.diamondType = doc._id
+    } else {
+      result.diamondType = null
     }
   }
 
@@ -448,7 +468,7 @@ export const createTransaction = async (req, res) => {
   console.log('diamondType received:', req.body.diamondType) // ← ADD THIS
 
   try {
-    const resolvedStatuses = await resolveStatuses(req.body.status, req.body.paymentStatus)
+    const resolvedStatuses = await resolveStatuses(req.body.status, req.body.paymentStatus, req.body.diamondType)
     const computedFields = await calculateTransactionFields(req.body)
 
     const transaction = new Transaction({
@@ -467,6 +487,7 @@ export const createTransaction = async (req, res) => {
       .populate('bank')
       .populate('status')
       .populate('paymentStatus')
+      .populate('diamondType')
 
     res.status(201).json({ success: true, data: populated })
   } catch (error) {
@@ -481,6 +502,7 @@ export const getAllTransactions = async (req, res) => {
       .populate('bank')
       .populate('status')
       .populate('paymentStatus')
+      .populate('diamondType')
       .sort({ createdAt: -1 })
     res.status(200).json({ success: true, data: transactions })
   } catch (error) {
@@ -494,6 +516,7 @@ export const getTransaction = async (req, res) => {
       .populate('bank')
       .populate('status')
       .populate('paymentStatus')
+      .populate('diamondType')
     if (!transaction) return res.status(404).json({ success: false, message: 'Transaction not found' })
     res.status(200).json({ success: true, data: transaction })
   } catch (error) {
@@ -508,7 +531,8 @@ export const updateTransaction = async (req, res) => {
 
     const mergedData = { ...existing.toObject(), ...req.body }
 
-    const resolvedStatuses = await resolveStatuses(mergedData.status, mergedData.paymentStatus)
+    const resolvedStatuses = await resolveStatuses(mergedData.status, mergedData.paymentStatus, mergedData.diamondType
+    )
     const computedFields = await calculateTransactionFields(mergedData)
 
     const updateObject = { ...req.body, ...resolvedStatuses, ...computedFields }
@@ -525,6 +549,7 @@ export const updateTransaction = async (req, res) => {
       .populate('bank')
       .populate('status')
       .populate('paymentStatus')
+      .populate('diamondType')
 
     if (!transaction) return res.status(404).json({ success: false, message: 'Transaction not found' })
 

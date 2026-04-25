@@ -15,6 +15,7 @@ import './models/Contact.js'
 import './models/Transaction.js'
 import './models/Status.js'
 import './models/PaymentStatus.js'
+import './models/DiamondType.js'
 
 // Routes
 import diamondRoutes from './routes/diamondRoutes.js'
@@ -28,6 +29,7 @@ import contactRoutes from './routes/contactRoutes.js'
 import transactionRoutes from './routes/transactionRoutes.js'
 import statusRoutes from './routes/statusRoutes.js'
 import paymentStatusRoutes from './routes/paymentStatusRoutes.js'
+import diamondTypeRoutes from './routes/diamondTypeRoutes.js'
 
 dotenv.config()
 
@@ -52,6 +54,7 @@ app.use('/api/contacts', contactRoutes)
 app.use('/api/statuses', statusRoutes)
 app.use('/api/payment-statuses', paymentStatusRoutes)
 app.use('/api/transactions', transactionRoutes)
+app.use('/api/diamond-types', diamondTypeRoutes)
 
 
 mongoose.connect(process.env.MONGO_URI)

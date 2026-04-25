@@ -13,7 +13,7 @@ const transactionSchema = new mongoose.Schema({
   weight: { type: Number },
   certificateNo: { type: String },
   synthesis: { type: String },
-  diamondType: { type: String },
+  diamondType: { type: mongoose.Schema.Types.ObjectId, ref: 'DiamondType' },
   cut: { type: String },
   carat: { type: Number },
   colour: { type: String },

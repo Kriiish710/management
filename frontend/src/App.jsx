@@ -10,6 +10,7 @@ fontLink.href = "https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;5
 document.head.appendChild(fontLink);
 
 export default function App() {
+  console.log(import.meta.env.VITE_API_URL);
   const [collapsed, setCollapsed]   = useState(false);
   const [activePage, setActivePage] = useState("transactions");
   const [showCreate, setShowCreate] = useState(false);
