@@ -15,7 +15,7 @@ import './models/Contact.js'
 import './models/Transaction.js'
 import './models/Status.js'
 import './models/PaymentStatus.js'
-import './models/DiamondType.js'
+import './models/Diamondtype.js'
 
 // Routes
 import diamondRoutes from './routes/diamondRoutes.js'
