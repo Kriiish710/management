@@ -1,4 +1,4 @@
-import DiamondType from "../models/Diamondtype"
+import DiamondType from "../models/Diamondtype.js"
 
 export const createDiamondType = async (req, res) => {
   try {
