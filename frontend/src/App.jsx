@@ -1,7 +1,11 @@
 import { useState } from "react";
+import { BrowserRouter, Routes, Route, useNavigate, useParams } from "react-router-dom";
 import Sidebar from "./pages/Sidebar";
 import Sample from "./Sample";
 import Masters from "./pages/Masters";
+import ProfitLoss from "./pages/ProfitLoss";
+import CreateTransactionPage from "./forms/CreateTransactionModal";
+import EditTransactionPage from "./forms/EditTransactionModal";
 import "./App.css";
 
 const fontLink = document.createElement("link");
@@ -9,26 +13,25 @@ fontLink.rel = "stylesheet";
 fontLink.href = "https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap";
 document.head.appendChild(fontLink);
 
-export default function App() {
-  console.log(import.meta.env.VITE_API_URL);
-  const [collapsed, setCollapsed]   = useState(false);
-  const [activePage, setActivePage] = useState("transactions");
-  const [showCreate, setShowCreate] = useState(false);
+// ── Which sidebar item is "active" based on current path ─────────────────────
+function getActivePage(pathname) {
+  if (pathname.startsWith("/transactions")) return "transactions";
+  if (pathname.startsWith("/pnl"))          return "pnl";
+  if (pathname.startsWith("/masters"))      return "masters";
+  return "transactions";
+}
 
-  const renderPage = () => {
-    if (showCreate) return (
-      <CreateTransaction
-        onBack={() => setShowCreate(false)}
-        onCreated={() => { setShowCreate(false); setActivePage("transactions"); }}
-      />
-    );
-    if (activePage === "transactions") return (
-      <Sample onCreateClick={() => setShowCreate(true)} />
-    );
-    if (activePage === "masters") return (
-      <Masters />
-    );
-    return null;
+// ── Inner layout (needs useNavigate, so must be inside BrowserRouter) ────────
+function AppLayout() {
+  const [collapsed, setCollapsed] = useState(false);
+  const navigate  = useNavigate();
+  const pathname  = window.location.pathname;
+  const activePage = getActivePage(pathname);
+
+  const handleNavigate = (page) => {
+    if (page === "transactions") navigate("/transactions");
+    else if (page === "pnl")     navigate("/pnl");
+    else if (page === "masters") navigate("/masters");
   };
 
   return (
@@ -36,12 +39,27 @@ export default function App() {
       <Sidebar
         collapsed={collapsed}
         onToggle={() => setCollapsed(p => !p)}
-        activePage={showCreate ? "transactions" : activePage}
-        onNavigate={(page) => { setShowCreate(false); setActivePage(page); }}
+        activePage={activePage}
+        onNavigate={handleNavigate}
       />
       <div className="flex-1 overflow-y-auto bg-slate-50">
-        {renderPage()}
+        <Routes>
+          <Route path="/"                         element={<Sample />} />
+          <Route path="/transactions"             element={<Sample />} />
+          <Route path="/transactions/create"      element={<CreateTransactionPage />} />
+          <Route path="/transactions/:id/edit"    element={<EditTransactionPage />} />
+          <Route path="/pnl"                      element={<ProfitLoss />} />
+          <Route path="/masters"                  element={<Masters />} />
+        </Routes>
       </div>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppLayout />
+    </BrowserRouter>
   );
 }

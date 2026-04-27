@@ -66,14 +66,17 @@ const resolveStatuses = async (statusVal, paymentStatusVal, diamondTypeVal) => {
 
   // 🆕 DIAMOND TYPE
   if (diamondTypeVal !== undefined) {
-    if (mongoose.Types.ObjectId.isValid(diamondTypeVal)) {
+    // Already a populated object — extract the _id
+    if (diamondTypeVal && typeof diamondTypeVal === 'object' && diamondTypeVal._id) {
+      result.diamondType = diamondTypeVal._id
+    } else if (mongoose.Types.ObjectId.isValid(diamondTypeVal)) {
       const exists = await DiamondType.findById(diamondTypeVal)
       if (!exists) throw new Error('Invalid diamond type')
       result.diamondType = exists._id
     } else if (diamondTypeVal) {
       const doc = await DiamondType.findOne({
         label: { $regex: `^${diamondTypeVal}$`, $options: 'i' }
-      })      
+      })
       if (!doc) throw new Error('Invalid diamond type')
       result.diamondType = doc._id
     } else {

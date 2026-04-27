@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import * as XLSX from "https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs";
-import CreateTransactionModal from "./forms/CreateTransactionModal";
-import EditTransactionModal from "./forms/EditTransactionModal";
 import DuplicateChecker from "../components/DuplicateChecker";
 import FilterButton, { DEFAULT_FILTERS } from "../components/FilterButton";
 import SortButton from "../components/SortButton";
@@ -358,6 +357,8 @@ function Checkbox({ checked, indeterminate = false, onChange, onClick }) {
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function Sample() {
+  const navigate = useNavigate();
+
   const [rows, setRows] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -366,8 +367,6 @@ export default function Sample() {
   const [importLabel, setImportLabel] = useState("Importing to database...");
   const [fileName, setFileName] = useState("");
   const [search, setSearch] = useState("");
-  const [editingRow, setEditingRow] = useState(null);
-  const [showCreate, setShowCreate] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [sortOpen, setSortOpen] = useState(false);
@@ -494,67 +493,6 @@ export default function Sample() {
     return partial ? partial._id : undefined;
   };
 
-  // ── Excel column mapping (verified against actual Excel headers) ───────────
-  // 0:  Shipping no          → shippingNo
-  // 1:  SKU no.              → skuNo
-  // 2:  Currier              → courier
-  // 3:  Supplier             → supplier
-  // 4:  Buyer                → buyerAtSource
-  // 5:  Date of purchase     → dateOfPurchase
-  // 6:  Shape                → shape
-  // 7:  Waight               → weight
-  // 8:  Number Of Certy      → certificateNo
-  // 9:  Price per ct. USD    → pricePerCaratUSD
-  // 10: GST %                → gstPercent
-  // 11: GST amount           → formula, skip
-  // 12: Buy price total      → formula, skip
-  // 13: Currency             → purchaseCurrency
-  // 14: Rate                 → formula, skip
-  // 15: Based currency INR   → formula, skip
-  // 16: Correction price USD → correctionPriceUSD
-  // 17: Actual rate          → actualRate
-  // 18: Actual price INR     → formula, skip
-  // 19: Market P/L           → formula, skip
-  // 20: Mark up              → markup
-  // 21: Sell price local     → formula, skip
-  // 22: Local currency       → localCurrency
-  // 23: Type of exchange     → typeOfExchange (bank name string)
-  // 24: Payment status       → paymentStatus (lookup by label)
-  // 25: Status               → status (lookup by label)
-  // 26: Wirehouse            → warehouse
-  // 27: Inventory date       → inventoryDate
-  // 28: Inventory manager    → inventoryManager
-  // 29: Inventory history    → skip
-  // 30: Синтез               → synthesis
-  // 31: Type                 → diamondType  ← THE FIX
-  // 32: Cut                  → cut
-  // 33: Ct                   → carat
-  // 34: Colour               → colour
-  // 35: Clarity              → clarity
-  // 36: Price (RUB)          → formula, skip
-  // 37: Price (USD)          → formula, skip
-  // 38: Price per ct         → formula, skip
-  // 39: Rate (RUB)           → formula, skip
-  // 40: Location             → location
-  // 41: Laboratory           → laboratory
-  // 42: Certificate          → formula (=I2), skip
-  // 43: Mesurment            → parsed → length, width, height
-  // 44: None                 → skip
-  // 45: Date of sale         → dateOfSale
-  // 46: Buyer (final)        → buyerName
-  // 47: Sale amount          → saleAmount
-  // 48: Currency (sale)      → saleCurrency
-  // 49: Rate on date of sale → rateOnDateOfSale
-  // 50: Base currency        → formula, skip
-  // 51: Base currency INR    → formula, skip
-  // 52: Marginality          → formula, skip
-  // 53: Actual markup        → formula, skip
-  // 54: Manager              → manager
-  // 55: Bonus points         → bonusPoints
-  // 56: Bonus amount         → formula, skip
-  // 57: Rate (bonus)         → bonusRate
-  // 58: Bonus in local       → formula, skip
-
   const mapExcelRow = (row, statusesList, paymentStatusesList, diamondTypesList) => {
     const n = (idx) => {
       const v = row[idx];
@@ -620,8 +558,6 @@ export default function Sample() {
     if (paymentStatusId) result.paymentStatus = paymentStatusId;
     if (diamondTypeId) result.diamondType = diamondTypeId;
 
-
-    // Remove empty/null/undefined values before sending to API
     Object.keys(result).forEach(k => {
       if (result[k] == null || result[k] === "") delete result[k];
     });
@@ -667,7 +603,7 @@ export default function Sample() {
       const wb = XLSX.read(buffer, { type: "array", cellDates: false, raw: false, cellFormula: false });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
-      const dataRows = data.slice(1); // skip header row
+      const dataRows = data.slice(1);
       const validRows = dataRows.filter(row => row[1] && String(row[1]).trim() !== "");
       if (validRows.length === 0) { alert("No valid rows found with SKU numbers"); return; }
 
@@ -781,20 +717,6 @@ export default function Sample() {
     await fetchTransactions();
   };
 
-  // ── Row saves ─────────────────────────────────────────────────────────────
-
-  const handleEditSave = (updated) =>
-    setRows(prev => prev.map(r => r._id === updated._id ? updated : r));
-
-  const handleCreateSave = (created, banksList) => {
-    const patched = { ...created };
-    if (patched.typeOfExchange && typeof patched.typeOfExchange === "string") {
-      const match = banksList.find(b => b._id === patched.typeOfExchange);
-      if (match) patched.typeOfExchange = match;
-    }
-    setRows(prev => [patched, ...prev]);
-  };
-
   // ── Column drag ───────────────────────────────────────────────────────────
 
   const handleColDragStart = (e, key) => { dragSrcKey.current = key; e.dataTransfer.effectAllowed = "move"; };
@@ -895,7 +817,8 @@ export default function Sample() {
           <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden"
             onChange={e => { handleFile(e.target.files[0]); e.target.value = ""; }} />
 
-          <button onClick={() => setShowCreate(true)}
+          {/* ── Navigate to create page instead of opening modal ── */}
+          <button onClick={() => navigate("/transactions/create")}
             className="flex items-center gap-1.5 px-3.5 py-2 text-[13px] font-semibold text-white bg-blue-600 border-none rounded-md cursor-pointer hover:bg-blue-700 transition-colors font-[DM_Sans,sans-serif]">
             <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
             Create
@@ -931,7 +854,8 @@ export default function Sample() {
             <p className="m-0 mb-1.5 text-[15px] font-semibold text-slate-900">No transactions yet</p>
             <p className="m-0 mb-5 text-[13px] text-slate-400">Create one manually or import an Excel file</p>
             <div className="flex items-center gap-3">
-              <button onClick={() => setShowCreate(true)}
+              {/* ── Navigate to create page ── */}
+              <button onClick={() => navigate("/transactions/create")}
                 className="flex items-center gap-2 px-5 py-2.5 text-[13px] font-semibold text-white bg-blue-600 border-none rounded-[9px] cursor-pointer hover:bg-blue-700 font-[DM_Sans,sans-serif]">
                 <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
                 Create Transaction
@@ -1021,7 +945,7 @@ export default function Sample() {
                     return (
                       <tr key={row._id || i}
                         className={`border-b border-slate-100 transition-colors duration-100 ${isSelected ? "bg-blue-50" : i % 2 === 0 ? "bg-white hover:bg-blue-50" : "bg-slate-50/60 hover:bg-blue-50"}`}
-                        onClick={() => { if (!isSelected) setEditingRow(row); }}>
+                        onClick={() => { if (!isSelected) navigate(`/transactions/${row._id}/edit`); }}>
 
                         {/* Checkbox cell */}
                         <td className="px-2 py-2.5 border-r border-slate-100 sticky left-0 z-10 text-center cursor-default"
@@ -1037,7 +961,11 @@ export default function Sample() {
                         {orderedColumns.map(col => (
                           <td key={col.key}
                             className="px-2 py-2.5 border-r border-slate-100 whitespace-nowrap text-slate-700 cursor-pointer"
-                            onClick={() => isSelected ? toggleRow(row._id, { stopPropagation: () => { } }) : setEditingRow(row)}>
+                            onClick={e => {
+                              e.stopPropagation();
+                              if (isSelected) toggleRow(row._id, e);
+                              else navigate(`/transactions/${row._id}/edit`);
+                            }}>
                             {formatCell(col.key, row[col.key])}
                           </td>
                         ))}
@@ -1080,10 +1008,7 @@ export default function Sample() {
         />
       )}
 
-      {/* Modals */}
-      {showCreate && <CreateTransactionModal onSave={handleCreateSave} onClose={() => setShowCreate(false)} />}
-      {editingRow && <EditTransactionModal transaction={editingRow} onSave={handleEditSave} onClose={() => setEditingRow(null)} />}
-
+      {/* Duplicate checker (import-only, stays here) */}
       {duplicateModal && (
         <DuplicateChecker
           duplicates={duplicateModal.duplicates}
