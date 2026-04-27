@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { BrowserRouter, Routes, Route, useNavigate, useParams } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import Sidebar from "./pages/Sidebar";
 import Sample from "./Sample";
 import Masters from "./pages/Masters";
 import ProfitLoss from "./pages/ProfitLoss";
-import CreateTransactionPage from "./forms/CreateTransactionModal";
-import EditTransactionPage from "./forms/EditTransactionModal";
+import CreateTransactionPage from "./forms/CreateTransactionPage";
+import EditTransactionPage from "./forms/EditTransactionPage";
 import "./App.css";
 
 const fontLink = document.createElement("link");

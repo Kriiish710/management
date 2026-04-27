@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -115,9 +116,11 @@ function calcPreview(form, bank) {
   const marketPL = actualPriceINR != null && basePriceINR != null
     ? actualPriceINR - basePriceINR : null;
 
-  const sellPrice = actualPriceINR != null && markup != null
-    ? actualPriceINR * (1 + markup) : null;
+  // sellPrice (INR) = actualPriceINR / inrToRub * (1 + markup)
+  const sellPrice = actualPriceINR != null && inrToRub != null && markup != null
+    ? (actualPriceINR / inrToRub) * (1 + markup) : null;
 
+  // priceRUB = sellPrice (INR) / inrToRub rate
   const priceRUB = sellPrice != null && inrToRub != null
     ? Math.ceil((sellPrice / inrToRub) / 100) * 100 : null;
 
@@ -151,7 +154,8 @@ function calcPreview(form, bank) {
 const fmt = (v, decimals = 2) =>
   v == null ? "—" : Number(v).toLocaleString("en-IN", { maximumFractionDigits: decimals });
 
-export default function CreateTransactionModal({ onSave, onClose }) {
+export default function CreateTransactionPage() {
+  const navigate = useNavigate();
   const [banks, setBanks] = useState([]);
   const [statuses, setStatuses] = useState([]);
   const [paymentStatuses, setPaymentStatuses] = useState([]);
@@ -205,8 +209,11 @@ export default function CreateTransactionModal({ onSave, onClose }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       }).then(r => r.json());
-      if (res.success) { onSave(res.data, banks); onClose(); }
-      else alert(res.message || "Failed to create transaction");
+      if (res.success) {
+        navigate("/transactions");
+      } else {
+        alert(res.message || "Failed to create transaction");
+      }
     } catch (e) { console.error(e); alert("Network error: " + e.message); }
     setSaving(false);
   };
@@ -268,7 +275,6 @@ export default function CreateTransactionModal({ onSave, onClose }) {
       <input type="number" step="any" value={form[f.key]} placeholder={f.hint || ""}
         onChange={e => handleChange(f.key, e.target.value)} className={base} />
     );
-
     return <input type="text" value={form[f.key]} onChange={e => handleChange(f.key, e.target.value)} className={base} />;
   };
 
@@ -286,27 +292,54 @@ export default function CreateTransactionModal({ onSave, onClose }) {
     : "Select a bank in Pricing to auto-fill rates";
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 font-[DM_Sans,sans-serif]">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[900px] max-h-[90vh] flex flex-col">
-
-        <div className="flex items-center justify-between px-6 py-[18px] border-b border-slate-100">
+    <div className="min-h-screen bg-slate-50 font-[DM_Sans,sans-serif]">
+      {/* Top bar */}
+      <div className="bg-white border-b border-slate-200 px-7 flex items-center justify-between h-[60px] sticky top-0 z-30 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate("/transactions")}
+            className="flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition-colors text-slate-500"
+          >
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <div className="w-px h-5 bg-slate-200" />
           <div>
-            <h2 className="m-0 text-base font-bold text-slate-900">New Transaction</h2>
-            <p className="m-0 mt-0.5 text-xs text-slate-400">{subtitle}</p>
+            <div className="text-[17px] font-bold text-slate-900 leading-tight">New Transaction</div>
+            <div className="text-[11px] text-slate-400">{subtitle}</div>
           </div>
-          <button onClick={onClose} className="border-none bg-transparent cursor-pointer p-1.5 rounded-lg text-slate-400 text-xl leading-none hover:text-slate-600">✕</button>
         </div>
-
-        <div className="flex border-b border-slate-100 px-6">
-          {CREATE_TABS.map(tab => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              className={`border-none bg-transparent cursor-pointer px-4 py-2.5 text-[13px] font-medium font-[DM_Sans,sans-serif] transition-colors duration-150 border-b-2 ${activeTab === tab.id ? "text-slate-900 border-blue-600" : "text-slate-400 border-transparent"}`}>
-              {tab.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => navigate("/transactions")}
+            className="px-[18px] py-2 text-[13px] font-medium text-slate-600 bg-white border border-slate-200 rounded-lg cursor-pointer font-[DM_Sans,sans-serif] hover:bg-slate-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="px-[18px] py-2 text-[13px] font-semibold text-white bg-blue-600 border-none rounded-lg cursor-pointer font-[DM_Sans,sans-serif] hover:bg-blue-700 disabled:opacity-50"
+          >
+            {saving ? "Creating..." : "Create Transaction"}
+          </button>
         </div>
+      </div>
 
-        <div className="flex-1 overflow-y-auto p-6">
+      {/* Tabs */}
+      <div className="bg-white border-b border-slate-100 px-7 flex">
+        {CREATE_TABS.map(tab => (
+          <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+            className={`border-none bg-transparent cursor-pointer px-4 py-2.5 text-[13px] font-medium font-[DM_Sans,sans-serif] transition-colors duration-150 border-b-2 ${activeTab === tab.id ? "text-slate-900 border-blue-600" : "text-slate-400 border-transparent"}`}>
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Body */}
+      <div className="px-7 py-6">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-6">
           <div className="grid grid-cols-4 gap-4">
             {activeFields.map(f => (
               <div key={f.key}>
@@ -318,6 +351,8 @@ export default function CreateTransactionModal({ onSave, onClose }) {
               </div>
             ))}
           </div>
+
+          {/* Summary cards */}
           <div className="grid grid-cols-4 gap-3 mt-6">
             {summaryCards.map(s => (
               <div key={s.label} className="bg-slate-50 rounded-xl px-4 py-3 text-center border border-slate-100">
@@ -326,13 +361,6 @@ export default function CreateTransactionModal({ onSave, onClose }) {
               </div>
             ))}
           </div>
-        </div>
-
-        <div className="flex justify-end gap-2.5 px-6 py-3.5 border-t border-slate-100 bg-slate-50 rounded-b-2xl">
-          <button onClick={onClose} className="px-[18px] py-2 text-[13px] font-medium text-slate-600 bg-white border border-slate-200 rounded-lg cursor-pointer font-[DM_Sans,sans-serif] hover:bg-slate-50">Cancel</button>
-          <button onClick={handleSave} disabled={saving} className="px-[18px] py-2 text-[13px] font-semibold text-white bg-blue-600 border-none rounded-lg cursor-pointer font-[DM_Sans,sans-serif] hover:bg-blue-700 disabled:opacity-50">
-            {saving ? "Creating..." : "Create Transaction"}
-          </button>
         </div>
       </div>
     </div>

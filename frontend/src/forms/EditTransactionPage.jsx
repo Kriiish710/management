@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -114,12 +115,15 @@ function calcPreview(form, bank) {
   const marketPL = actualPriceINR != null && basePriceINR != null
     ? actualPriceINR - basePriceINR : null;
 
+  // sellPrice stays in INR (same as original)
   const sellPrice = actualPriceINR != null && inrToRub != null && markup != null
     ? (actualPriceINR / inrToRub) * (1 + markup) : null;
 
+  // priceRUB: convert sellPrice (INR) → RUB by dividing by inrToRub rate from the bank
   const priceRUB = sellPrice != null && inrToRub != null
-    ? Math.ceil((sellPrice * inrToRub) / 100) * 100 : null;
+    ? Math.ceil((sellPrice / inrToRub) / 100) * 100 : null;
 
+  // priceUSD: sellPrice is in INR, divide by usdToInr to get USD
   const priceUSD = sellPrice != null && usdToInr != null
     ? sellPrice / usdToInr : null;
 
@@ -164,57 +168,83 @@ function calcPreview(form, bank) {
 const fmt = (v, decimals = 2) =>
   v == null ? "—" : Number(v).toLocaleString("en-IN", { maximumFractionDigits: decimals });
 
-export default function EditTransactionModal({ transaction, onSave, onClose }) {
+export default function EditTransactionPage() {
+  const navigate = useNavigate();
+  const { id } = useParams();
+
   const [banks, setBanks] = useState([]);
   const [statuses, setStatuses] = useState([]);
   const [paymentStatuses, setPaymentStatuses] = useState([]);
   const [diamondTypes, setDiamondTypes] = useState([]);
   const [activeTab, setActiveTab] = useState("general");
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [selectedBank, setSelectedBank] = useState(null);
+  const [formData, setFormData] = useState(null);
 
-  const [formData, setFormData] = useState(() => {
-    const parseMeas = (str) => {
-      const parts = (str || "").split("*");
-      return {
-        length: parseFloat(parts[0]) || "",
-        width: parseFloat(parts[1]) || "",
-        height: parseFloat(parts[2]) || "",
-      };
+  // Fetch the transaction by ID
+  useEffect(() => {
+    const fetchTransaction = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`${API}/transactions/${id}`).then(r => r.json());
+        if (res.success) {
+          const transaction = res.data;
+          const parseMeas = (str) => {
+            const parts = (str || "").split("*");
+            return {
+              length: parseFloat(parts[0]) || "",
+              width: parseFloat(parts[1]) || "",
+              height: parseFloat(parts[2]) || "",
+            };
+          };
+          setFormData({
+            ...transaction,
+            ...(!transaction.length && !transaction.width && !transaction.height
+              ? parseMeas(transaction.measurement)
+              : {}),
+            status: typeof transaction.status === "object"
+              ? transaction.status?._id ?? ""
+              : transaction.status ?? "",
+            paymentStatus: typeof transaction.paymentStatus === "object"
+              ? transaction.paymentStatus?._id ?? ""
+              : transaction.paymentStatus ?? "",
+            typeOfExchange: typeof transaction.typeOfExchange === "object"
+              ? transaction.typeOfExchange?._id ?? ""
+              : transaction.typeOfExchange ?? "",
+          });
+        } else {
+          alert("Transaction not found");
+          navigate("/transactions");
+        }
+      } catch (e) {
+        console.error(e);
+        alert("Failed to load transaction");
+        navigate("/transactions");
+      }
+      setLoading(false);
     };
-
-    return {
-      ...transaction,
-      ...(!transaction.length && !transaction.width && !transaction.height
-        ? parseMeas(transaction.measurement)
-        : {}),
-      status: typeof transaction.status === "object"
-        ? transaction.status?._id ?? ""
-        : transaction.status ?? "",
-      paymentStatus: typeof transaction.paymentStatus === "object"
-        ? transaction.paymentStatus?._id ?? ""
-        : transaction.paymentStatus ?? "",
-      typeOfExchange: typeof transaction.typeOfExchange === "object"
-        ? transaction.typeOfExchange?._id ?? ""
-        : transaction.typeOfExchange ?? "",
-    };
-  });
+    fetchTransaction();
+  }, [id]);
 
   useEffect(() => {
     fetch(`${API}/banks/active`).then(r => r.json()).then(d => {
       if (d.success) {
         setBanks(d.data);
-        const txBankId = typeof transaction.typeOfExchange === "object"
-          ? transaction.typeOfExchange?._id
-          : transaction.typeOfExchange;
-        const match = d.data.find(b => b._id === txBankId);
-        if (match) setSelectedBank(match);
       }
     }).catch(() => { });
     fetch(`${API}/statuses/active`).then(r => r.json()).then(d => { if (d.success) setStatuses(d.data); }).catch(() => { });
     fetch(`${API}/payment-statuses/active`).then(r => r.json()).then(d => { if (d.success) setPaymentStatuses(d.data); }).catch(() => { });
     fetch(`${API}/diamond-types/active`).then(r => r.json()).then(d => { if (d.success) setDiamondTypes(d.data); }).catch(() => { });
   }, []);
+
+  // Once banks are loaded and formData is set, resolve the selected bank
+  useEffect(() => {
+    if (!formData || !banks.length) return;
+    const txBankId = formData.typeOfExchange;
+    const match = banks.find(b => b._id === txBankId);
+    if (match) setSelectedBank(match);
+  }, [banks, formData]);
 
   const handleChange = (key, value) => {
     setFormData(prev => ({ ...prev, [key]: value }));
@@ -223,29 +253,23 @@ export default function EditTransactionModal({ transaction, onSave, onClose }) {
     }
   };
 
-  const preview = calcPreview(formData, selectedBank);
+  const preview = formData ? calcPreview(formData, selectedBank) : {};
 
   const handleSave = async () => {
     setSaving(true);
     try {
       const payload = { ...formData, ...preview };
-      const res = await fetch(`${API}/transactions/${transaction._id}`, {
+      const res = await fetch(`${API}/transactions/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       }).then(r => r.json());
       if (res.success) {
-        const savedBank = banks.find(b => b._id === formData.typeOfExchange);
-        const patched = {
-          ...res.data,
-          typeOfExchange: savedBank
-            ? { _id: savedBank._id, name: savedBank.name }
-            : res.data.typeOfExchange,
-        };
-        onSave(patched);
-        onClose();
+        navigate("/transactions");
+      } else {
+        alert(res.message || "Failed to save transaction");
       }
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error(e); alert("Network error: " + e.message); }
     setSaving(false);
   };
 
@@ -253,6 +277,8 @@ export default function EditTransactionModal({ transaction, onSave, onClose }) {
   const roClass = "w-full px-2.5 py-[7px] text-xs border border-slate-100 rounded-lg bg-slate-50 text-slate-400 outline-none font-[DM_Sans,sans-serif] box-border";
 
   const renderField = (col) => {
+    if (!formData) return null;
+
     if (col.type === "preview") {
       const val = preview[col.key];
       const isNeg = col.signed && val != null && val < 0;
@@ -332,7 +358,9 @@ export default function EditTransactionModal({ transaction, onSave, onClose }) {
 
   const subtitle = selectedBank
     ? <><span className="text-blue-600 font-semibold">{selectedBank.name}</span> · USD→INR: <span className="text-slate-600 font-medium">{selectedBank.usdToInr}</span> · INR→RUB: <span className="text-slate-600 font-medium">{selectedBank.inrToRub}</span></>
-    : <>SKU: <span className="text-blue-600 font-semibold">{formData.skuNo || "—"}</span> · Weight: <span className="text-slate-600 font-medium">{formData.weight || "—"} ct</span></>;
+    : formData
+      ? <>SKU: <span className="text-blue-600 font-semibold">{formData.skuNo || "—"}</span> · Weight: <span className="text-slate-600 font-medium">{formData.weight || "—"} ct</span></>
+      : "Loading...";
 
   const summaryCards = [
     { label: "Buy Total", val: `$${fmt(preview.buyPriceTotal)}`, colorClass: "text-slate-900" },
@@ -341,28 +369,65 @@ export default function EditTransactionModal({ transaction, onSave, onClose }) {
     { label: "Price (RUB)", val: preview.priceRUB == null ? "—" : `₽${fmt(preview.priceRUB, 0)}`, colorClass: "text-slate-900" },
   ];
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 font-[DM_Sans,sans-serif] flex flex-col items-center justify-center">
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        <div style={{ animation: "spin 0.7s linear infinite" }} className="w-8 h-8 border-[3px] border-blue-600 border-t-transparent rounded-full mb-3" />
+        <p className="m-0 text-[13px] text-slate-400">Loading transaction...</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 font-[DM_Sans,sans-serif]">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[900px] max-h-[90vh] flex flex-col">
-
-        <div className="flex items-center justify-between px-6 py-[18px] border-b border-slate-100">
+    <div className="min-h-screen bg-slate-50 font-[DM_Sans,sans-serif]">
+      {/* Top bar */}
+      <div className="bg-white border-b border-slate-200 px-7 flex items-center justify-between h-[60px] sticky top-0 z-30 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate("/transactions")}
+            className="flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition-colors text-slate-500"
+          >
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <div className="w-px h-5 bg-slate-200" />
           <div>
-            <h2 className="m-0 text-base font-bold text-slate-900">Edit Transaction</h2>
-            <p className="m-0 mt-0.5 text-xs text-slate-400">{subtitle}</p>
+            <div className="text-[17px] font-bold text-slate-900 leading-tight">Edit Transaction</div>
+            <div className="text-[11px] text-slate-400">{subtitle}</div>
           </div>
-          <button onClick={onClose} className="border-none bg-transparent cursor-pointer p-1.5 rounded-lg text-slate-400 text-xl leading-none hover:text-slate-600">✕</button>
         </div>
-
-        <div className="flex border-b border-slate-100 px-6">
-          {EDIT_TABS.map(tab => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              className={`border-none bg-transparent cursor-pointer px-4 py-2.5 text-[13px] font-medium font-[DM_Sans,sans-serif] transition-colors duration-150 border-b-2 ${activeTab === tab.id ? "text-slate-900 border-blue-600" : "text-slate-400 border-transparent"}`}>
-              {tab.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => navigate("/transactions")}
+            className="px-[18px] py-2 text-[13px] font-medium text-slate-600 bg-white border border-slate-200 rounded-lg cursor-pointer font-[DM_Sans,sans-serif] hover:bg-slate-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="px-[18px] py-2 text-[13px] font-semibold text-white bg-blue-600 border-none rounded-lg cursor-pointer font-[DM_Sans,sans-serif] hover:bg-blue-700 disabled:opacity-50"
+          >
+            {saving ? "Saving..." : "Save Changes"}
+          </button>
         </div>
+      </div>
 
-        <div className="flex-1 overflow-y-auto p-6">
+      {/* Tabs */}
+      <div className="bg-white border-b border-slate-100 px-7 flex">
+        {EDIT_TABS.map(tab => (
+          <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+            className={`border-none bg-transparent cursor-pointer px-4 py-2.5 text-[13px] font-medium font-[DM_Sans,sans-serif] transition-colors duration-150 border-b-2 ${activeTab === tab.id ? "text-slate-900 border-blue-600" : "text-slate-400 border-transparent"}`}>
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Body */}
+      <div className="px-7 py-6">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-6">
           <div className="grid grid-cols-4 gap-4">
             {activeKeys.map(key => {
               const col = COL_MAP[key];
@@ -379,6 +444,7 @@ export default function EditTransactionModal({ transaction, onSave, onClose }) {
             })}
           </div>
 
+          {/* Summary cards */}
           <div className="grid grid-cols-4 gap-3 mt-6">
             {summaryCards.map(s => (
               <div key={s.label} className="bg-slate-50 rounded-xl px-4 py-3 text-center border border-slate-100">
@@ -387,13 +453,6 @@ export default function EditTransactionModal({ transaction, onSave, onClose }) {
               </div>
             ))}
           </div>
-        </div>
-
-        <div className="flex justify-end gap-2.5 px-6 py-3.5 border-t border-slate-100 bg-slate-50 rounded-b-2xl">
-          <button onClick={onClose} className="px-[18px] py-2 text-[13px] font-medium text-slate-600 bg-white border border-slate-200 rounded-lg cursor-pointer font-[DM_Sans,sans-serif] hover:bg-slate-50">Cancel</button>
-          <button onClick={handleSave} disabled={saving} className="px-[18px] py-2 text-[13px] font-semibold text-white bg-blue-600 border-none rounded-lg cursor-pointer font-[DM_Sans,sans-serif] hover:bg-blue-700 disabled:opacity-50">
-            {saving ? "Saving..." : "Save Changes"}
-          </button>
         </div>
       </div>
     </div>

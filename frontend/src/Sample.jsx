@@ -103,6 +103,21 @@ const PAYMENT_STYLES = {
   default: { bg: "#f8fafc", color: "#94a3b8", border: "#e2e8f0" },
 };
 
+// Build diamond type style map from fetched master data
+function buildDiamondTypeStyles(diamondTypes) {
+  const map = { default: { bg: "#f8fafc", color: "#94a3b8", border: "#e2e8f0" } };
+  diamondTypes.forEach(dt => {
+    const hex = dt.color || "#64748b";
+    // Generate a light bg and border from the hex color
+    map[dt.label] = {
+      color: hex,
+      bg: hex + "18",   // 18 = ~9% opacity in hex
+      border: hex + "55", // 55 = ~33% opacity
+    };
+  });
+  return map;
+}
+
 function Badge({ value, styleMap }) {
   const label = getLabel(value);
   if (!label) return <span className="text-slate-300">—</span>;
@@ -124,10 +139,11 @@ const CURRENCY_KEYS = new Set([
   "bonusAmount", "bonusInLocalCurrency", "marginality", "actualMarkup",
 ]);
 
-function formatCell(key, value) {
+function formatCell(key, value, diamondTypeStyles) {
   if (value === null || value === undefined || value === "") return <span className="text-slate-300">—</span>;
   if (key === "status") return <Badge value={value} styleMap={STATUS_STYLES} />;
   if (key === "paymentStatus") return <Badge value={value} styleMap={PAYMENT_STYLES} />;
+  if (key === "diamondType") return <Badge value={value} styleMap={diamondTypeStyles} />;
   if (key === "skuNo") return <span className="text-blue-600 font-medium text-xs">{String(value)}</span>;
   if (key === "typeOfExchange") {
     const name = typeof value === "object" ? (value.name || "—") : String(value);
@@ -262,9 +278,7 @@ function ExportDropdown({ onExportExcel, onExportPDF }) {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
               </svg>
             </span>
-            <span>
-              <span className="block font-medium">Excel (.xlsx)</span>
-            </span>
+            <span><span className="block font-medium">Excel (.xlsx)</span></span>
           </button>
           <button
             onClick={() => { setOpen(false); onExportPDF(); }}
@@ -275,9 +289,7 @@ function ExportDropdown({ onExportExcel, onExportPDF }) {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
               </svg>
             </span>
-            <span>
-              <span className="block font-medium">PDF (.pdf)</span>
-            </span>
+            <span><span className="block font-medium">PDF (.pdf)</span></span>
           </button>
         </div>
       )}
@@ -291,42 +303,27 @@ function SelectionBar({ count, onExportExcel, onExportPDF, onClear }) {
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3 bg-slate-900 text-white rounded-2xl shadow-2xl border border-slate-700 font-[DM_Sans,sans-serif]">
       <div className="flex items-center gap-2">
-        <span className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-[11px] font-bold">
-          {count}
-        </span>
-        <span className="text-[13px] font-medium text-slate-300">
-          {count === 1 ? "row selected" : "rows selected"}
-        </span>
+        <span className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-[11px] font-bold">{count}</span>
+        <span className="text-[13px] font-medium text-slate-300">{count === 1 ? "row selected" : "rows selected"}</span>
       </div>
-
       <div className="w-px h-5 bg-slate-700" />
-
-      <button
-        onClick={onExportExcel}
-        className="flex items-center gap-1.5 px-3.5 py-1.5 text-[12px] font-semibold rounded-lg border-none cursor-pointer transition-colors bg-emerald-600 hover:bg-emerald-700 text-white font-[DM_Sans,sans-serif]"
-      >
+      <button onClick={onExportExcel}
+        className="flex items-center gap-1.5 px-3.5 py-1.5 text-[12px] font-semibold rounded-lg border-none cursor-pointer transition-colors bg-emerald-600 hover:bg-emerald-700 text-white font-[DM_Sans,sans-serif]">
         <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M8 8l4 4 4-4M12 4v8" />
         </svg>
         Excel
       </button>
-
-      <button
-        onClick={onExportPDF}
-        className="flex items-center gap-1.5 px-3.5 py-1.5 text-[12px] font-semibold rounded-lg border-none cursor-pointer transition-colors bg-red-600 hover:bg-red-700 text-white font-[DM_Sans,sans-serif]"
-      >
+      <button onClick={onExportPDF}
+        className="flex items-center gap-1.5 px-3.5 py-1.5 text-[12px] font-semibold rounded-lg border-none cursor-pointer transition-colors bg-red-600 hover:bg-red-700 text-white font-[DM_Sans,sans-serif]">
         <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
         </svg>
         PDF
       </button>
-
       <div className="w-px h-5 bg-slate-700" />
-
-      <button
-        onClick={onClear}
-        className="flex items-center gap-1 text-[12px] text-slate-400 hover:text-white bg-transparent border-none cursor-pointer transition-colors font-[DM_Sans,sans-serif]"
-      >
+      <button onClick={onClear}
+        className="flex items-center gap-1 text-[12px] text-slate-400 hover:text-white bg-transparent border-none cursor-pointer transition-colors font-[DM_Sans,sans-serif]">
         <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
         </svg>
@@ -342,15 +339,8 @@ function Checkbox({ checked, indeterminate = false, onChange, onClick }) {
   const ref = useRef(null);
   useEffect(() => { if (ref.current) ref.current.indeterminate = indeterminate; }, [indeterminate]);
   return (
-    <input
-      ref={ref}
-      type="checkbox"
-      checked={checked}
-      onChange={onChange}
-      onClick={onClick}
-      className="w-[15px] h-[15px] rounded cursor-pointer"
-      style={{ accentColor: "#2563eb" }}
-    />
+    <input ref={ref} type="checkbox" checked={checked} onChange={onChange} onClick={onClick}
+      className="w-[15px] h-[15px] rounded cursor-pointer" style={{ accentColor: "#2563eb" }} />
   );
 }
 
@@ -358,8 +348,8 @@ function Checkbox({ checked, indeterminate = false, onChange, onClick }) {
 
 export default function Sample() {
   const navigate = useNavigate();
-
   const [rows, setRows] = useState([]);
+  const [diamondTypeStyles, setDiamondTypeStyles] = useState({ default: { bg: "#f8fafc", color: "#94a3b8", border: "#e2e8f0" } });
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [importing, setImporting] = useState(false);
@@ -393,7 +383,18 @@ export default function Sample() {
     setIsLoading(false);
   };
 
-  useEffect(() => { fetchTransactions(); }, []);
+  // Fetch diamond types and build style map
+  const fetchDiamondTypes = async () => {
+    try {
+      const res = await fetch(`${API}/diamond-types/active`).then(r => r.json());
+      if (res.success) setDiamondTypeStyles(buildDiamondTypeStyles(res.data));
+    } catch (e) { console.error(e); }
+  };
+
+  useEffect(() => {
+    fetchTransactions();
+    fetchDiamondTypes();
+  }, []);
 
   // ── Pipeline ──────────────────────────────────────────────────────────────
 
@@ -470,18 +471,16 @@ export default function Sample() {
   };
 
   const fetchMappingsFresh = async () => {
-    let statusesList = [], paymentStatusesList = [], diamondTypesList = [];
+    let statusesList = [], paymentStatusesList = [];
     try {
-      const [sRes, pRes, dRes] = await Promise.all([
+      const [sRes, pRes] = await Promise.all([
         fetch(`${API}/statuses/active`).then(r => r.json()),
         fetch(`${API}/payment-statuses/active`).then(r => r.json()),
-        fetch(`${API}/diamond-types/active`).then(r => r.json()),
       ]);
       if (sRes.success) statusesList = sRes.data;
       if (pRes.success) paymentStatusesList = pRes.data;
-      if (dRes.success) diamondTypesList = dRes.data;
     } catch (e) { console.error(e); }
-    return { statusesList, paymentStatusesList, diamondTypesList };
+    return { statusesList, paymentStatusesList };
   };
 
   const findId = (list, label) => {
@@ -493,7 +492,7 @@ export default function Sample() {
     return partial ? partial._id : undefined;
   };
 
-  const mapExcelRow = (row, statusesList, paymentStatusesList, diamondTypesList) => {
+  const mapExcelRow = (row, statusesList, paymentStatusesList) => {
     const n = (idx) => {
       const v = row[idx];
       if (v == null || v === "") return undefined;
@@ -510,59 +509,29 @@ export default function Sample() {
 
     const statusId = findId(statusesList, s(25));
     const paymentStatusId = findId(paymentStatusesList, s(24));
-    const diamondTypeId = findId(diamondTypesList, s(31));
     const measurements = parseMeasurement(s(43));
 
     const result = {
-      shippingNo: s(0),
-      skuNo: s(1),
-      courier: s(2),
-      supplier: s(3),
-      buyerAtSource: s(4),
-      dateOfPurchase: excelDateToJS(row[5]),
-      shape: s(6),
-      weight: n(7),
-      certificateNo: s(8),
-      pricePerCaratUSD: n(9),
-      gstPercent: n(10) ?? 0,
-      purchaseCurrency: s(13) || "USD",
-      correctionPriceUSD: n(16),
-      actualRate: n(17),
-      markup: n(20),
-      localCurrency: s(22) || "RUB",
-      typeOfExchange: s(23),
-      warehouse: s(26),
-      inventoryDate: excelDateToJS(row[27]),
-      inventoryManager: s(28),
-      synthesis: s(30),
-      cut: s(32),
-      carat: n(33),
-      colour: s(34),
-      clarity: s(35),
-      location: s(40),
-      laboratory: s(41),
-      length: measurements.length,
-      width: measurements.width,
-      height: measurements.height,
-      dateOfSale: excelDateToJS(row[45]),
-      buyerName: s(46),
-      saleAmount: n(47),
-      saleCurrency: s(48),
-      rateOnDateOfSale: n(49),
-      manager: s(54),
-      bonusPoints: n(55),
-      bonusRate: n(57),
+      shippingNo: s(0), skuNo: s(1), courier: s(2), supplier: s(3),
+      buyerAtSource: s(4), dateOfPurchase: excelDateToJS(row[5]),
+      shape: s(6), weight: n(7), certificateNo: s(8),
+      pricePerCaratUSD: n(9), gstPercent: n(10) ?? 0,
+      purchaseCurrency: s(13) || "USD", correctionPriceUSD: n(16),
+      actualRate: n(17), markup: n(20), localCurrency: s(22) || "RUB",
+      typeOfExchange: s(23), warehouse: s(26),
+      inventoryDate: excelDateToJS(row[27]), inventoryManager: s(28),
+      synthesis: s(30), diamondType: s(31), cut: s(32), carat: n(33),
+      colour: s(34), clarity: s(35), location: s(40), laboratory: s(41),
+      length: measurements.length, width: measurements.width, height: measurements.height,
+      dateOfSale: excelDateToJS(row[45]), buyerName: s(46), saleAmount: n(47),
+      saleCurrency: s(48), rateOnDateOfSale: n(49),
+      manager: s(54), bonusPoints: n(55), bonusRate: n(57),
     };
 
     if (statusId) result.status = statusId;
     if (paymentStatusId) result.paymentStatus = paymentStatusId;
-    if (diamondTypeId) result.diamondType = diamondTypeId;
 
-    Object.keys(result).forEach(k => {
-      if (result[k] == null || result[k] === "") delete result[k];
-    });
-    console.log('ROW diamondType:', s(31), '| raw col31:', row[31]);
-
+    Object.keys(result).forEach(k => { if (result[k] == null || result[k] === "") delete result[k]; });
     return result;
   };
 
@@ -575,8 +544,7 @@ export default function Sample() {
     for (let i = 0; i < mappedRows.length; i++) {
       try {
         const res = await fetch(`${API}/transactions`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+          method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify(mappedRows[i]),
         });
         const data = await res.json();
@@ -597,7 +565,7 @@ export default function Sample() {
 
   const parseExcel = async (file) => {
     setFileName(file.name);
-    const { statusesList, paymentStatusesList, diamondTypesList } = await fetchMappingsFresh();
+    const { statusesList, paymentStatusesList } = await fetchMappingsFresh();
     try {
       const buffer = await file.arrayBuffer();
       const wb = XLSX.read(buffer, { type: "array", cellDates: false, raw: false, cellFormula: false });
@@ -607,7 +575,7 @@ export default function Sample() {
       const validRows = dataRows.filter(row => row[1] && String(row[1]).trim() !== "");
       if (validRows.length === 0) { alert("No valid rows found with SKU numbers"); return; }
 
-      const mappedRows = validRows.map(row => mapExcelRow(row, statusesList, paymentStatusesList, diamondTypesList));
+      const mappedRows = validRows.map(row => mapExcelRow(row, statusesList, paymentStatusesList));
 
       let existingTransactions = [];
       try {
@@ -671,17 +639,10 @@ export default function Sample() {
     for (let i = 0; i < changedRows.length; i++) {
       const row = changedRows[i];
       const id = existingIdMap[String(row.skuNo).trim()];
-      if (!id) {
-        errorCount++;
-        errors.push(`SKU ${row.skuNo}: ID not found`);
-        setImportProgress({ done: i + 1, total: totalOps });
-        continue;
-      }
+      if (!id) { errorCount++; errors.push(`SKU ${row.skuNo}: ID not found`); setImportProgress({ done: i + 1, total: totalOps }); continue; }
       try {
         const res = await fetch(`${API}/transactions/${id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(row),
+          method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(row),
         });
         const data = await res.json();
         if (res.ok && data.success) successCount++;
@@ -694,9 +655,7 @@ export default function Sample() {
       for (let i = 0; i < pendingNewRows.length; i++) {
         try {
           const res = await fetch(`${API}/transactions`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(pendingNewRows[i]),
+            method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(pendingNewRows[i]),
           });
           const data = await res.json();
           if (res.ok && data.success) successCount++;
@@ -817,7 +776,6 @@ export default function Sample() {
           <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden"
             onChange={e => { handleFile(e.target.files[0]); e.target.value = ""; }} />
 
-          {/* ── Navigate to create page instead of opening modal ── */}
           <button onClick={() => navigate("/transactions/create")}
             className="flex items-center gap-1.5 px-3.5 py-2 text-[13px] font-semibold text-white bg-blue-600 border-none rounded-md cursor-pointer hover:bg-blue-700 transition-colors font-[DM_Sans,sans-serif]">
             <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
@@ -854,7 +812,6 @@ export default function Sample() {
             <p className="m-0 mb-1.5 text-[15px] font-semibold text-slate-900">No transactions yet</p>
             <p className="m-0 mb-5 text-[13px] text-slate-400">Create one manually or import an Excel file</p>
             <div className="flex items-center gap-3">
-              {/* ── Navigate to create page ── */}
               <button onClick={() => navigate("/transactions/create")}
                 className="flex items-center gap-2 px-5 py-2.5 text-[13px] font-semibold text-white bg-blue-600 border-none rounded-[9px] cursor-pointer hover:bg-blue-700 font-[DM_Sans,sans-serif]">
                 <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
@@ -883,17 +840,12 @@ export default function Sample() {
               <table className="w-full border-collapse font-[DM_Sans,sans-serif]">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
-
-                    {/* Checkbox header */}
                     <th className="px-2 py-[11px] border-r border-slate-100 sticky left-0 bg-slate-50 z-20 w-8 text-center">
                       <Checkbox checked={allPageSelected} indeterminate={somePageSelected} onChange={togglePageAll} onClick={e => e.stopPropagation()} />
                     </th>
-
-                    {/* # header */}
                     <th className="px-2 py-[11px] text-left text-[11px] font-semibold text-slate-500 uppercase tracking-[0.05em] whitespace-nowrap border-r border-slate-100 sticky bg-slate-50 z-20 select-none" style={{ left: 32 }}>
                       #
                     </th>
-
                     {orderedColumns.map(col => {
                       const isOver = dragOverKey === col.key;
                       const isSorted = sortRules.some(r => r.key === col.key);
@@ -946,27 +898,18 @@ export default function Sample() {
                       <tr key={row._id || i}
                         className={`border-b border-slate-100 transition-colors duration-100 ${isSelected ? "bg-blue-50" : i % 2 === 0 ? "bg-white hover:bg-blue-50" : "bg-slate-50/60 hover:bg-blue-50"}`}
                         onClick={() => { if (!isSelected) navigate(`/transactions/${row._id}/edit`); }}>
-
-                        {/* Checkbox cell */}
                         <td className="px-2 py-2.5 border-r border-slate-100 sticky left-0 z-10 text-center cursor-default"
                           style={{ background: baseBg }} onClick={e => e.stopPropagation()}>
                           <Checkbox checked={isSelected} onChange={() => { }} onClick={e => toggleRow(row._id, e)} />
                         </td>
-
-                        {/* Row number */}
                         <td className="px-2 py-2.5 text-xs text-slate-400 border-r border-slate-100 sticky z-10" style={{ left: 32, background: baseBg }}>
                           {(page - 1) * pageSize + i + 1}
                         </td>
-
                         {orderedColumns.map(col => (
                           <td key={col.key}
                             className="px-2 py-2.5 border-r border-slate-100 whitespace-nowrap text-slate-700 cursor-pointer"
-                            onClick={e => {
-                              e.stopPropagation();
-                              if (isSelected) toggleRow(row._id, e);
-                              else navigate(`/transactions/${row._id}/edit`);
-                            }}>
-                            {formatCell(col.key, row[col.key])}
+                            onClick={() => isSelected ? toggleRow(row._id, { stopPropagation: () => { } }) : navigate(`/transactions/${row._id}/edit`)}>
+                            {formatCell(col.key, row[col.key], diamondTypeStyles)}
                           </td>
                         ))}
                       </tr>
@@ -1008,7 +951,7 @@ export default function Sample() {
         />
       )}
 
-      {/* Duplicate checker (import-only, stays here) */}
+      {/* Duplicate checker modal (stays as modal - not a page) */}
       {duplicateModal && (
         <DuplicateChecker
           duplicates={duplicateModal.duplicates}
