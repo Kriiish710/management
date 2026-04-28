@@ -118,11 +118,11 @@ export default function ProfitLossDrilldown({ typeName, meta, rows, onClose }) {
       >
         {/* ── Modal header ── */}
         <div
-          className="flex items-center justify-between px-6 py-[18px] flex-wrap gap-3 flex-shrink-0"
+          className="flex items-center justify-between px-6 py-[18px] flex-wrap gap-3 shrink-0"
           style={{ background: meta.bg, borderBottom: `1px solid ${meta.border}` }}
         >
           <div className="flex items-center gap-2.5">
-            <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: meta.color }} />
+            <span className="w-3 h-3 rounded-full shrink-0" style={{ background: meta.color }} />
             <span className="text-[15px] font-bold" style={{ color: meta.text }}>
               {typeName}
             </span>
