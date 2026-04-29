@@ -785,7 +785,7 @@ export default function Sample() {
       </div>
 
       {/* Body */}
-      <div className="px-7 py-5">
+      <div className="px-5 py-5">
 
         {importing && (
           <div className="mb-4 bg-white rounded-xl border border-slate-200 px-5 py-4">
@@ -898,7 +898,7 @@ export default function Sample() {
                       <tr key={row._id || i}
                         className={`border-b border-slate-100 transition-colors duration-100 ${isSelected ? "bg-blue-50" : i % 2 === 0 ? "bg-white hover:bg-blue-50" : "bg-slate-50/60 hover:bg-blue-50"}`}
                         onClick={() => { if (!isSelected) navigate(`/transactions/${row._id}/edit`); }}>
-                        <td className="px-2 py-2.5 border-r border-slate-100 sticky left-0 z-10 text-center cursor-default"
+                        <td className="px-2 py-2 border-r border-slate-100 sticky left-0 z-10 text-center cursor-default"
                           style={{ background: baseBg }} onClick={e => e.stopPropagation()}>
                           <Checkbox checked={isSelected} onChange={() => { }} onClick={e => toggleRow(row._id, e)} />
                         </td>
@@ -907,7 +907,7 @@ export default function Sample() {
                         </td>
                         {orderedColumns.map(col => (
                           <td key={col.key}
-                            className="px-2 py-2.5 border-r border-slate-100 whitespace-nowrap text-slate-700 cursor-pointer"
+                            className="px-2  border-r border-slate-100 whitespace-nowrap text-slate-700 cursor-pointer"
                             onClick={() => isSelected ? toggleRow(row._id, { stopPropagation: () => { } }) : navigate(`/transactions/${row._id}/edit`)}>
                             {formatCell(col.key, row[col.key], diamondTypeStyles)}
                           </td>

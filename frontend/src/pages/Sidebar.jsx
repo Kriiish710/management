@@ -31,7 +31,7 @@ export default function Sidebar({ collapsed, onToggle, activePage, onNavigate })
       <div className="flex items-center gap-2.5 h-[60px] px-3 border-b border-slate-100 flex-shrink-0">
         <button
           onClick={onToggle}
-          className="w-9 h-9 flex items-center justify-center rounded-lg bg-transparent border-none cursor-pointer text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors flex-shrink-0"
+          className="w-9 h-9 flex items-center justify-center rounded-lg bg-transparent border-none cursor-pointer text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors shrink-0"
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           <Menu size={17} strokeWidth={2} />
@@ -77,7 +77,7 @@ export default function Sidebar({ collapsed, onToggle, activePage, onNavigate })
               {/* Icon */}
               <span
                 className={`
-                  flex-shrink-0 flex items-center justify-center rounded-lg w-9 h-9 transition-all duration-150
+                  shrink-0 flex items-center justify-center rounded-lg w-9 h-9 transition-all duration-150
                   ${active ? "bg-blue-100 text-blue-600" : "bg-slate-100 text-slate-400"}
                 `}
               >
@@ -98,7 +98,7 @@ export default function Sidebar({ collapsed, onToggle, activePage, onNavigate })
 
               {/* Active dot */}
               {active && !collapsed && (
-                <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-blue-600" />
+                <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-blue-600" />
               )}
             </button>
           );
@@ -106,14 +106,14 @@ export default function Sidebar({ collapsed, onToggle, activePage, onNavigate })
       </nav>
 
       {/* ── Bottom ── */}
-      <div className={`border-t border-slate-100 flex-shrink-0 ${collapsed ? "py-3 flex justify-center" : "p-3"}`}>
+      <div className={`border-t border-slate-100 shrink-0 ${collapsed ? "py-3 flex justify-center" : "p-3"}`}>
         {collapsed ? (
           <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-100">
             <Hexagon size={13} stroke="#94a3b8" strokeWidth={2} />
           </div>
         ) : (
           <div className="rounded-xl p-3 flex items-center gap-2.5 bg-slate-50 border border-slate-100">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 bg-indigo-100">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 bg-indigo-100">
               <Hexagon size={13} stroke="#4f46e5" strokeWidth={2} />
             </div>
             <div className="min-w-0">
