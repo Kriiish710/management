@@ -1,460 +1,460 @@
-import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+  import { useState, useEffect } from "react";
+  import { useNavigate, useParams } from "react-router-dom";
 
-const API = import.meta.env.VITE_API_URL;
+  const API = import.meta.env.VITE_API_URL;
 
-const COLUMNS = [
-  { key: "shippingNo", label: "Shipping No", type: "text" },
-  { key: "skuNo", label: "SKU No.", type: "text" },
-  { key: "courier", label: "Courier", type: "text" },
-  { key: "supplier", label: "Supplier", type: "text" },
-  { key: "buyerAtSource", label: "Buyer", type: "text" },
-  { key: "dateOfPurchase", label: "Date of Purchase", type: "date" },
-  { key: "shape", label: "Shape", type: "text" },
-  { key: "weight", label: "Weight (ct)", type: "number" },
-  { key: "certificateNo", label: "Cert. No.", type: "text" },
-  { key: "pricePerCaratUSD", label: "Price/ct (USD)", type: "number" },
-  { key: "gstPercent", label: "GST %", type: "number" },
-  { key: "gstAmount", label: "GST Amt", type: "preview" },
-  { key: "buyPriceTotal", label: "Buy Price Total", type: "preview" },
-  { key: "purchaseCurrency", label: "Currency", type: "text" },
-  { key: "rateAtPurchase", label: "Rate (USD/INR)", type: "preview" },
-  { key: "basePriceINR", label: "Base (INR)", type: "preview" },
-  { key: "correctionPriceUSD", label: "Correction (USD)", type: "number" },
-  { key: "actualRate", label: "Actual Rate", type: "number" },
-  { key: "actualPriceINR", label: "Actual Price (INR)", type: "preview" },
-  { key: "marketPL", label: "Market P/L", type: "preview", signed: true },
-  { key: "markup", label: "Mark Up", type: "number", hint: "e.g. 0.7 = 70%" },
-  { key: "sellPriceLocalCurrency", label: "Sell Price (INR)", type: "preview" },
-  { key: "localCurrency", label: "Local Currency", type: "text" },
-  { key: "typeOfExchange", label: "Bank", type: "bank" },
-  { key: "paymentStatus", label: "Payment Status", type: "paymentStatus" },
-  { key: "status", label: "Status", type: "status" },
-  { key: "warehouse", label: "Warehouse", type: "text" },
-  { key: "inventoryDate", label: "Inventory Date", type: "date" },
-  { key: "inventoryManager", label: "Inv. Manager", type: "text" },
-  { key: "synthesis", label: "Synthesis", type: "text" },
-  { key: "diamondType", label: "Type", type: "diamondType" },
-  { key: "cut", label: "Cut", type: "text" },
-  { key: "carat", label: "Ct", type: "number" },
-  { key: "colour", label: "Colour", type: "text" },
-  { key: "clarity", label: "Clarity", type: "text" },
-  { key: "priceRUB", label: "Price (RUB)", type: "preview" },
-  { key: "priceUSD", label: "Price (USD)", type: "preview" },
-  { key: "pricePerCt", label: "Price/ct", type: "preview" },
-  { key: "rateRUB", label: "Rate (USD/RUB)", type: "preview" },
-  { key: "location", label: "Location", type: "text" },
-  { key: "laboratory", label: "Laboratory", type: "text" },
-  { key: "length", label: "Length (mm)", type: "number" },
-  { key: "width", label: "Width (mm)", type: "number" },
-  { key: "height", label: "Height (mm)", type: "number" },
-  { key: "dateOfSale", label: "Date of Sale", type: "date" },
-  { key: "buyerName", label: "Final Buyer", type: "text" },
-  { key: "saleAmount", label: "Sale Amount", type: "number" },
-  { key: "saleCurrency", label: "Sale Currency", type: "text" },
-  { key: "rateOnDateOfSale", label: "Rate on Sale", type: "number" },
-  { key: "saleBaseINR", label: "Base Currency (INR)", type: "preview" },
-  { key: "marginality", label: "Marginality", type: "preview", signed: true },
-  { key: "actualMarkup", label: "Actual Markup %", type: "preview" },
-  { key: "manager", label: "Manager", type: "text" },
-  { key: "bonusPoints", label: "Bonus Pts", type: "number" },
-  { key: "bonusAmount", label: "Bonus Amt", type: "preview" },
-  { key: "bonusRate", label: "Rate (Bonus)", type: "number" },
-  { key: "bonusInLocalCurrency", label: "Bonus (Local)", type: "preview" },
-];
+  const COLUMNS = [
+    { key: "shippingNo", label: "Shipping No", type: "text" },
+    { key: "skuNo", label: "SKU No.", type: "text" },
+    { key: "courier", label: "Courier", type: "text" },
+    { key: "supplier", label: "Supplier", type: "text" },
+    { key: "buyerAtSource", label: "Buyer", type: "text" },
+    { key: "dateOfPurchase", label: "Date of Purchase", type: "date" },
+    { key: "shape", label: "Shape", type: "text" },
+    { key: "weight", label: "Weight (ct)", type: "number" },
+    { key: "certificateNo", label: "Cert. No.", type: "text" },
+    { key: "pricePerCaratUSD", label: "Price/ct (USD)", type: "number" },
+    { key: "gstPercent", label: "GST %", type: "number" },
+    { key: "gstAmount", label: "GST Amt", type: "preview" },
+    { key: "buyPriceTotal", label: "Buy Price Total", type: "preview" },
+    { key: "purchaseCurrency", label: "Currency", type: "text" },
+    { key: "rateAtPurchase", label: "Rate (USD/INR)", type: "preview" },
+    { key: "basePriceINR", label: "Base (INR)", type: "preview" },
+    { key: "correctionPriceUSD", label: "Correction (USD)", type: "number" },
+    { key: "actualRate", label: "Actual Rate", type: "number" },
+    { key: "actualPriceINR", label: "Actual Price (INR)", type: "preview" },
+    { key: "marketPL", label: "Market P/L", type: "preview", signed: true },
+    { key: "markup", label: "Mark Up", type: "number", hint: "e.g. 0.7 = 70%" },
+    { key: "sellPriceLocalCurrency", label: "Sell Price (INR)", type: "preview" },
+    { key: "localCurrency", label: "Local Currency", type: "text" },
+    { key: "typeOfExchange", label: "Bank", type: "bank" },
+    { key: "paymentStatus", label: "Payment Status", type: "paymentStatus" },
+    { key: "status", label: "Status", type: "status" },
+    { key: "warehouse", label: "Warehouse", type: "text" },
+    { key: "inventoryDate", label: "Inventory Date", type: "date" },
+    { key: "inventoryManager", label: "Inv. Manager", type: "text" },
+    { key: "synthesis", label: "Synthesis", type: "text" },
+    { key: "diamondType", label: "Type", type: "diamondType" },
+    { key: "cut", label: "Cut", type: "text" },
+    { key: "carat", label: "Ct", type: "number" },
+    { key: "colour", label: "Colour", type: "text" },
+    { key: "clarity", label: "Clarity", type: "text" },
+    { key: "priceRUB", label: "Price (RUB)", type: "preview" },
+    { key: "priceUSD", label: "Price (USD)", type: "preview" },
+    { key: "pricePerCt", label: "Price/ct", type: "preview" },
+    { key: "rateRUB", label: "Rate (USD/RUB)", type: "preview" },
+    { key: "location", label: "Location", type: "text" },
+    { key: "laboratory", label: "Laboratory", type: "text" },
+    { key: "length", label: "Length (mm)", type: "number" },
+    { key: "width", label: "Width (mm)", type: "number" },
+    { key: "height", label: "Height (mm)", type: "number" },
+    { key: "dateOfSale", label: "Date of Sale", type: "date" },
+    { key: "buyerName", label: "Final Buyer", type: "text" },
+    { key: "saleAmount", label: "Sale Amount", type: "number" },
+    { key: "saleCurrency", label: "Sale Currency", type: "text" },
+    { key: "rateOnDateOfSale", label: "Rate on Sale", type: "number" },
+    { key: "saleBaseINR", label: "Base Currency (INR)", type: "preview" },
+    { key: "marginality", label: "Marginality", type: "preview", signed: true },
+    { key: "actualMarkup", label: "Actual Markup %", type: "preview" },
+    { key: "manager", label: "Manager", type: "text" },
+    { key: "bonusPoints", label: "Bonus Pts", type: "number" },
+    { key: "bonusAmount", label: "Bonus Amt", type: "preview" },
+    { key: "bonusRate", label: "Rate (Bonus)", type: "number" },
+    { key: "bonusInLocalCurrency", label: "Bonus (Local)", type: "preview" },
+  ];
 
-const EDIT_TABS = [
-  {
-    id: "general", label: "General",
-    keys: ["shippingNo", "skuNo", "courier", "supplier", "buyerAtSource", "dateOfPurchase", "shape", "weight", "certificateNo", "synthesis", "diamondType", "cut", "carat", "colour", "clarity", "laboratory", "length", "width", "height", "location", "warehouse", "inventoryDate", "inventoryManager", "status", "paymentStatus"],
-  },
-  {
-    id: "pricing", label: "Pricing",
-    keys: ["purchaseCurrency", "typeOfExchange", "rateAtPurchase", "pricePerCaratUSD", "gstPercent", "gstAmount", "buyPriceTotal", "basePriceINR", "correctionPriceUSD", "actualRate", "actualPriceINR", "marketPL", "markup", "localCurrency", "sellPriceLocalCurrency", "priceRUB", "priceUSD", "pricePerCt", "rateRUB"],
-  },
-  {
-    id: "sales", label: "Sales",
-    keys: ["dateOfSale", "buyerName", "saleAmount", "saleCurrency", "rateOnDateOfSale", "saleBaseINR", "marginality", "actualMarkup"],
-  },
-  {
-    id: "bonus", label: "Bonus",
-    keys: ["manager", "bonusPoints", "bonusAmount", "bonusRate", "bonusInLocalCurrency"],
-  },
-];
+  const EDIT_TABS = [
+    {
+      id: "general", label: "General",
+      keys: ["shippingNo", "skuNo", "courier", "supplier", "buyerAtSource", "dateOfPurchase", "shape", "weight", "certificateNo", "synthesis", "diamondType", "cut", "carat", "colour", "clarity", "laboratory", "length", "width", "height", "location", "warehouse", "inventoryDate", "inventoryManager", "status", "paymentStatus"],
+    },
+    {
+      id: "pricing", label: "Pricing",
+      keys: ["purchaseCurrency", "typeOfExchange", "rateAtPurchase", "pricePerCaratUSD", "gstPercent", "gstAmount", "buyPriceTotal", "basePriceINR", "correctionPriceUSD", "actualRate", "actualPriceINR", "marketPL", "markup", "localCurrency", "sellPriceLocalCurrency", "priceRUB", "priceUSD", "pricePerCt", "rateRUB"],
+    },
+    {
+      id: "sales", label: "Sales",
+      keys: ["dateOfSale", "buyerName", "saleAmount", "saleCurrency", "rateOnDateOfSale", "saleBaseINR", "marginality", "actualMarkup"],
+    },
+    {
+      id: "bonus", label: "Bonus",
+      keys: ["manager", "bonusPoints", "bonusAmount", "bonusRate", "bonusInLocalCurrency"],
+    },
+  ];
 
-const COL_MAP = Object.fromEntries(COLUMNS.map(c => [c.key, c]));
+  const COL_MAP = Object.fromEntries(COLUMNS.map(c => [c.key, c]));
 
-function calcPreview(form, bank) {
-  const n = (v) => { const x = Number(v); return isNaN(x) || v === "" || v === null || v === undefined ? null : x; };
+  function calcPreview(form, bank) {
+    const n = (v) => { const x = Number(v); return isNaN(x) || v === "" || v === null || v === undefined ? null : x; };
 
-  const weight = n(form.weight);
-  const pricePerCaratUSD = n(form.pricePerCaratUSD);
-  const gstPercent = n(form.gstPercent) ?? 0;
-  const usdToInr = bank?.usdToInr ?? null;
-  const inrToRub = bank?.inrToRub ?? null;
-  const correctionUSD = n(form.correctionPriceUSD) ?? pricePerCaratUSD;
-  const actualRate = n(form.actualRate) ?? usdToInr;
-  const markup = n(form.markup);
-  const saleAmount = n(form.saleAmount);
-  const rateOnDateOfSale = n(form.rateOnDateOfSale);
-  const bonusPoints = n(form.bonusPoints) ?? 0;
-  const bonusRate = n(form.bonusRate);
+    const weight = n(form.weight);
+    const pricePerCaratUSD = n(form.pricePerCaratUSD);
+    const gstPercent = n(form.gstPercent) ?? 0;
+    const usdToInr = bank?.usdToInr ?? null;
+    const inrToRub = bank?.inrToRub ?? null;
+    const correctionUSD = n(form.correctionPriceUSD) ?? pricePerCaratUSD;
+    const actualRate = n(form.actualRate) ?? usdToInr;
+    const markup = n(form.markup);
+    const saleAmount = n(form.saleAmount);
+    const rateOnDateOfSale = n(form.rateOnDateOfSale);
+    const bonusPoints = n(form.bonusPoints) ?? 0;
+    const bonusRate = n(form.bonusRate);
 
-  const gstAmount = weight != null && pricePerCaratUSD != null
-    ? weight * pricePerCaratUSD * (gstPercent / 100) : null;
+    const gstAmount = weight != null && pricePerCaratUSD != null
+      ? weight * pricePerCaratUSD * (gstPercent / 100) : null;
 
-  const buyPriceTotal = weight != null && pricePerCaratUSD != null
-    ? weight * pricePerCaratUSD : null;
+    const buyPriceTotal = weight != null && pricePerCaratUSD != null
+      ? weight * pricePerCaratUSD : null;
 
-  const basePriceINR = buyPriceTotal != null && usdToInr != null
-    ? buyPriceTotal * usdToInr : null;
+    const basePriceINR = buyPriceTotal != null && usdToInr != null
+      ? buyPriceTotal * usdToInr : null;
 
-  const actualPriceINR = correctionUSD != null && weight != null && actualRate != null
-    ? correctionUSD * weight * actualRate : null;
+    const actualPriceINR = correctionUSD != null && weight != null && actualRate != null
+      ? correctionUSD * weight * actualRate : null;
 
-  const marketPL = actualPriceINR != null && basePriceINR != null
-    ? actualPriceINR - basePriceINR : null;
+    const marketPL = actualPriceINR != null && basePriceINR != null
+      ? actualPriceINR - basePriceINR : null;
 
-  // sellPrice stays in INR (same as original)
-  const sellPrice = actualPriceINR != null && inrToRub != null && markup != null
-    ? (actualPriceINR / inrToRub) * (1 + markup) : null;
+    // sellPrice stays in INR (same as original)
+    const sellPrice = actualPriceINR != null && inrToRub != null && markup != null
+      ? (actualPriceINR / inrToRub) * (1 + markup) : null;
 
-  // priceRUB: convert sellPrice (INR) → RUB by dividing by inrToRub rate from the bank
-  const priceRUB = sellPrice != null && inrToRub != null
-    ? Math.ceil((sellPrice / inrToRub) / 100) * 100 : null;
+    // priceRUB: convert sellPrice (INR) → RUB by dividing by inrToRub rate from the bank
+    const priceRUB = sellPrice != null && inrToRub != null
+      ? Math.ceil((sellPrice / inrToRub) / 100) * 100 : null;
 
-  // priceUSD: sellPrice is in INR, divide by usdToInr to get USD
-  const priceUSD = sellPrice != null && usdToInr != null
-    ? sellPrice / usdToInr : null;
+    // priceUSD: sellPrice is in INR, divide by usdToInr to get USD
+    const priceUSD = sellPrice != null && usdToInr != null
+      ? sellPrice / usdToInr : null;
 
-  const pricePerCt = priceUSD != null && weight != null && weight !== 0
-    ? priceUSD / weight : null;
+    const pricePerCt = priceUSD != null && weight != null && weight !== 0
+      ? priceUSD / weight : null;
 
-  const saleBaseINR = saleAmount != null && rateOnDateOfSale != null
-    ? saleAmount * rateOnDateOfSale : null;
+    const saleBaseINR = saleAmount != null && rateOnDateOfSale != null
+      ? saleAmount * rateOnDateOfSale : null;
 
-  const marginality = saleBaseINR != null && basePriceINR != null
-    ? saleBaseINR - basePriceINR : null;
+    const marginality = saleBaseINR != null && basePriceINR != null
+      ? saleBaseINR - basePriceINR : null;
 
-  const actualMarkup = saleBaseINR != null && basePriceINR != null && basePriceINR !== 0
-    ? saleBaseINR / (basePriceINR / 100) - 100 : null;
+    const actualMarkup = saleBaseINR != null && basePriceINR != null && basePriceINR !== 0
+      ? saleBaseINR / (basePriceINR / 100) - 100 : null;
 
-  const bonusAmount = actualPriceINR != null
-    ? (actualPriceINR / 100) * bonusPoints : null;
+    const bonusAmount = actualPriceINR != null
+      ? (actualPriceINR / 100) * bonusPoints : null;
 
-  const bonusLocal = bonusAmount != null && bonusRate != null
-    ? bonusAmount / bonusRate : null;
+    const bonusLocal = bonusAmount != null && bonusRate != null
+      ? bonusAmount / bonusRate : null;
 
-  return {
-    gstAmount,
-    buyPriceTotal,
-    rateAtPurchase: usdToInr,
-    basePriceINR,
-    actualPriceINR,
-    marketPL,
-    sellPriceLocalCurrency: sellPrice,
-    priceRUB,
-    priceUSD,
-    pricePerCt,
-    rateRUB: inrToRub,
-    saleBaseINR,
-    marginality,
-    actualMarkup,
-    bonusAmount,
-    bonusInLocalCurrency: bonusLocal,
-  };
-}
+    return {
+      gstAmount,
+      buyPriceTotal,
+      rateAtPurchase: usdToInr,
+      basePriceINR,
+      actualPriceINR,
+      marketPL,
+      sellPriceLocalCurrency: sellPrice,
+      priceRUB,
+      priceUSD,
+      pricePerCt,
+      rateRUB: inrToRub,
+      saleBaseINR,
+      marginality,
+      actualMarkup,
+      bonusAmount,
+      bonusInLocalCurrency: bonusLocal,
+    };
+  }
 
-const fmt = (v, decimals = 2) =>
-  v == null ? "—" : Number(v).toLocaleString("en-IN", { maximumFractionDigits: decimals });
+  const fmt = (v, decimals = 2) =>
+    v == null ? "—" : Number(v).toLocaleString("en-IN", { maximumFractionDigits: decimals });
 
-export default function EditTransactionPage() {
-  const navigate = useNavigate();
-  const { id } = useParams();
+  export default function EditTransactionPage() {
+    const navigate = useNavigate();
+    const { id } = useParams();
 
-  const [banks, setBanks] = useState([]);
-  const [statuses, setStatuses] = useState([]);
-  const [paymentStatuses, setPaymentStatuses] = useState([]);
-  const [diamondTypes, setDiamondTypes] = useState([]);
-  const [activeTab, setActiveTab] = useState("general");
-  const [saving, setSaving] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [selectedBank, setSelectedBank] = useState(null);
-  const [formData, setFormData] = useState(null);
+    const [banks, setBanks] = useState([]);
+    const [statuses, setStatuses] = useState([]);
+    const [paymentStatuses, setPaymentStatuses] = useState([]);
+    const [diamondTypes, setDiamondTypes] = useState([]);
+    const [activeTab, setActiveTab] = useState("general");
+    const [saving, setSaving] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [selectedBank, setSelectedBank] = useState(null);
+    const [formData, setFormData] = useState(null);
 
-  // Fetch the transaction by ID
-  useEffect(() => {
-    const fetchTransaction = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch(`${API}/transactions/${id}`).then(r => r.json());
-        if (res.success) {
-          const transaction = res.data;
-          const parseMeas = (str) => {
-            const parts = (str || "").split("*");
-            return {
-              length: parseFloat(parts[0]) || "",
-              width: parseFloat(parts[1]) || "",
-              height: parseFloat(parts[2]) || "",
+    // Fetch the transaction by ID
+    useEffect(() => {
+      const fetchTransaction = async () => {
+        setLoading(true);
+        try {
+          const res = await fetch(`${API}/transactions/${id}`).then(r => r.json());
+          if (res.success) {
+            const transaction = res.data;
+            const parseMeas = (str) => {
+              const parts = (str || "").split("*");
+              return {
+                length: parseFloat(parts[0]) || "",
+                width: parseFloat(parts[1]) || "",
+                height: parseFloat(parts[2]) || "",
+              };
             };
-          };
-          setFormData({
-            ...transaction,
-            ...(!transaction.length && !transaction.width && !transaction.height
-              ? parseMeas(transaction.measurement)
-              : {}),
-            status: typeof transaction.status === "object"
-              ? transaction.status?._id ?? ""
-              : transaction.status ?? "",
-            paymentStatus: typeof transaction.paymentStatus === "object"
-              ? transaction.paymentStatus?._id ?? ""
-              : transaction.paymentStatus ?? "",
-            typeOfExchange: typeof transaction.typeOfExchange === "object"
-              ? transaction.typeOfExchange?._id ?? ""
-              : transaction.typeOfExchange ?? "",
-          });
-        } else {
-          alert("Transaction not found");
+            setFormData({
+              ...transaction,
+              ...(!transaction.length && !transaction.width && !transaction.height
+                ? parseMeas(transaction.measurement)
+                : {}),
+              status: typeof transaction.status === "object"
+                ? transaction.status?._id ?? ""
+                : transaction.status ?? "",
+              paymentStatus: typeof transaction.paymentStatus === "object"
+                ? transaction.paymentStatus?._id ?? ""
+                : transaction.paymentStatus ?? "",
+              typeOfExchange: typeof transaction.typeOfExchange === "object"
+                ? transaction.typeOfExchange?._id ?? ""
+                : transaction.typeOfExchange ?? "",
+            });
+          } else {
+            alert("Transaction not found");
+            navigate("/transactions");
+          }
+        } catch (e) {
+          console.error(e);
+          alert("Failed to load transaction");
           navigate("/transactions");
         }
-      } catch (e) {
-        console.error(e);
-        alert("Failed to load transaction");
-        navigate("/transactions");
+        setLoading(false);
+      };
+      fetchTransaction();
+    }, [id]);
+
+    useEffect(() => {
+      fetch(`${API}/banks/active`).then(r => r.json()).then(d => {
+        if (d.success) {
+          setBanks(d.data);
+        }
+      }).catch(() => { });
+      fetch(`${API}/statuses/active`).then(r => r.json()).then(d => { if (d.success) setStatuses(d.data); }).catch(() => { });
+      fetch(`${API}/payment-statuses/active`).then(r => r.json()).then(d => { if (d.success) setPaymentStatuses(d.data); }).catch(() => { });
+      fetch(`${API}/diamond-types/active`).then(r => r.json()).then(d => { if (d.success) setDiamondTypes(d.data); }).catch(() => { });
+    }, []);
+
+    // Once banks are loaded and formData is set, resolve the selected bank
+    useEffect(() => {
+      if (!formData || !banks.length) return;
+      const txBankId = formData.typeOfExchange;
+      const match = banks.find(b => b._id === txBankId);
+      if (match) setSelectedBank(match);
+    }, [banks, formData]);
+
+    const handleChange = (key, value) => {
+      setFormData(prev => ({ ...prev, [key]: value }));
+      if (key === "typeOfExchange") {
+        setSelectedBank(banks.find(b => b._id === value) || null);
       }
-      setLoading(false);
     };
-    fetchTransaction();
-  }, [id]);
 
-  useEffect(() => {
-    fetch(`${API}/banks/active`).then(r => r.json()).then(d => {
-      if (d.success) {
-        setBanks(d.data);
+    const preview = formData ? calcPreview(formData, selectedBank) : {};
+
+    const handleSave = async () => {
+      setSaving(true);
+      try {
+        const payload = { ...formData, ...preview };
+        const res = await fetch(`${API}/transactions/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }).then(r => r.json());
+        if (res.success) {
+          navigate("/transactions");
+        } else {
+          alert(res.message || "Failed to save transaction");
+        }
+      } catch (e) { console.error(e); alert("Network error: " + e.message); }
+      setSaving(false);
+    };
+
+    const baseInputClass = "w-full px-2.5 py-[7px] text-xs border border-slate-200 rounded-lg bg-white outline-none font-[DM_Sans,sans-serif] box-border focus:border-blue-400";
+    const roClass = "w-full px-2.5 py-[7px] text-xs border border-slate-100 rounded-lg bg-slate-50 text-slate-400 outline-none font-[DM_Sans,sans-serif] box-border";
+
+    const renderField = (col) => {
+      if (!formData) return null;
+
+      if (col.type === "preview") {
+        const val = preview[col.key];
+        const isNeg = col.signed && val != null && val < 0;
+        const isPos = col.signed && val != null && val >= 0;
+        return (
+          <div className={roClass} style={{ color: isNeg ? "#dc2626" : isPos ? "#16a34a" : undefined }}>
+            {col.signed && val != null ? (val >= 0 ? "↑ " : "↓ ") : ""}
+            {val == null ? "—" : fmt(Math.abs(val))}
+          </div>
+        );
       }
-    }).catch(() => { });
-    fetch(`${API}/statuses/active`).then(r => r.json()).then(d => { if (d.success) setStatuses(d.data); }).catch(() => { });
-    fetch(`${API}/payment-statuses/active`).then(r => r.json()).then(d => { if (d.success) setPaymentStatuses(d.data); }).catch(() => { });
-    fetch(`${API}/diamond-types/active`).then(r => r.json()).then(d => { if (d.success) setDiamondTypes(d.data); }).catch(() => { });
-  }, []);
 
-  // Once banks are loaded and formData is set, resolve the selected bank
-  useEffect(() => {
-    if (!formData || !banks.length) return;
-    const txBankId = formData.typeOfExchange;
-    const match = banks.find(b => b._id === txBankId);
-    if (match) setSelectedBank(match);
-  }, [banks, formData]);
+      const value = formData[col.key] ?? "";
 
-  const handleChange = (key, value) => {
-    setFormData(prev => ({ ...prev, [key]: value }));
-    if (key === "typeOfExchange") {
-      setSelectedBank(banks.find(b => b._id === value) || null);
-    }
-  };
-
-  const preview = formData ? calcPreview(formData, selectedBank) : {};
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      const payload = { ...formData, ...preview };
-      const res = await fetch(`${API}/transactions/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      }).then(r => r.json());
-      if (res.success) {
-        navigate("/transactions");
-      } else {
-        alert(res.message || "Failed to save transaction");
+      if (col.type === "bank") {
+        const currentBankId = (() => {
+          const v = formData[col.key];
+          if (!v) return "";
+          const byId = banks.find(b => b._id === v);
+          if (byId) return byId._id;
+          const byName = banks.find(b =>
+            b.name.toLowerCase().includes(String(v).toLowerCase()) ||
+            String(v).toLowerCase().includes(b.name.toLowerCase())
+          );
+          return byName ? byName._id : "";
+        })();
+        return (
+          <select value={currentBankId} onChange={e => handleChange(col.key, e.target.value)} className={baseInputClass}>
+            <option value="">— No Bank —</option>
+            {banks.map(b => <option key={b._id} value={b._id}>{b.name}</option>)}
+          </select>
+        );
       }
-    } catch (e) { console.error(e); alert("Network error: " + e.message); }
-    setSaving(false);
-  };
+      if (col.type === "status") return (
+        <select value={value} onChange={e => handleChange(col.key, e.target.value)} className={baseInputClass}>
+          <option value="">—</option>
+          {statuses.map(s => <option key={s._id} value={s._id}>{s.label}</option>)}
+        </select>
+      );
+      if (col.type === "paymentStatus") return (
+        <select value={value} onChange={e => handleChange(col.key, e.target.value)} className={baseInputClass}>
+          <option value="">—</option>
+          {paymentStatuses.map(s => <option key={s._id} value={s._id}>{s.label}</option>)}
+        </select>
+      );
+      if (col.type === "diamondType") return (
+        <select value={value} onChange={e => handleChange(col.key, e.target.value)} className={baseInputClass}>
+          <option value="">— Select Type —</option>
+          {diamondTypes.length > 0
+            ? diamondTypes.map(dt => <option key={dt._id} value={dt.label}>{dt.label}</option>)
+            : (
+              <>
+                <option value="Certified">Certified</option>
+                <option value="Miele">Miele</option>
+                <option value="Noncertified">Noncertified</option>
+                <option value="Natural">Natural</option>
+                <option value="Produced">Produced</option>
+              </>
+            )
+          }
+        </select>
+      );
+      if (col.type === "date") {
+        const dv = value ? String(value).split("T")[0] : "";
+        return <input type="date" value={dv} onChange={e => handleChange(col.key, e.target.value)} className={baseInputClass} />;
+      }
+      if (col.type === "number") return (
+        <input type="number" step="any" value={value ?? ""}
+          placeholder={col.hint || ""}
+          onChange={e => handleChange(col.key, e.target.value === "" ? "" : e.target.value)}
+          className={baseInputClass} />
+      );
+      return <input type="text" value={value} onChange={e => handleChange(col.key, e.target.value)} className={baseInputClass} />;
+    };
 
-  const baseInputClass = "w-full px-2.5 py-[7px] text-xs border border-slate-200 rounded-lg bg-white outline-none font-[DM_Sans,sans-serif] box-border focus:border-blue-400";
-  const roClass = "w-full px-2.5 py-[7px] text-xs border border-slate-100 rounded-lg bg-slate-50 text-slate-400 outline-none font-[DM_Sans,sans-serif] box-border";
+    const activeKeys = EDIT_TABS.find(t => t.id === activeTab)?.keys ?? [];
 
-  const renderField = (col) => {
-    if (!formData) return null;
+    const subtitle = selectedBank
+      ? <><span className="text-blue-600 font-semibold">{selectedBank.name}</span> · USD→INR: <span className="text-slate-600 font-medium">{selectedBank.usdToInr}</span> · INR→RUB: <span className="text-slate-600 font-medium">{selectedBank.inrToRub}</span></>
+      : formData
+        ? <>SKU: <span className="text-blue-600 font-semibold">{formData.skuNo || "—"}</span> · Weight: <span className="text-slate-600 font-medium">{formData.weight || "—"} ct</span></>
+        : "Loading...";
 
-    if (col.type === "preview") {
-      const val = preview[col.key];
-      const isNeg = col.signed && val != null && val < 0;
-      const isPos = col.signed && val != null && val >= 0;
+    const summaryCards = [
+      { label: "Buy Total", val: `$${fmt(preview.buyPriceTotal)}`, colorClass: "text-slate-900" },
+      { label: "Base INR", val: `₹${fmt(preview.basePriceINR, 0)}`, colorClass: "text-slate-900" },
+      { label: "Market P/L", val: `${(preview.marketPL ?? 0) >= 0 ? "↑" : "↓"} ₹${fmt(Math.abs(preview.marketPL ?? 0), 0)}`, colorClass: (preview.marketPL ?? 0) >= 0 ? "text-green-600" : "text-red-600" },
+      { label: "Price (RUB)", val: preview.priceRUB == null ? "—" : `₽${fmt(preview.priceRUB, 0)}`, colorClass: "text-slate-900" },
+    ];
+
+    if (loading) {
       return (
-        <div className={roClass} style={{ color: isNeg ? "#dc2626" : isPos ? "#16a34a" : undefined }}>
-          {col.signed && val != null ? (val >= 0 ? "↑ " : "↓ ") : ""}
-          {val == null ? "—" : fmt(Math.abs(val))}
+        <div className="min-h-screen bg-slate-50 font-[DM_Sans,sans-serif] flex flex-col items-center justify-center">
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          <div style={{ animation: "spin 0.7s linear infinite" }} className="w-8 h-8 border-[3px] border-blue-600 border-t-transparent rounded-full mb-3" />
+          <p className="m-0 text-[13px] text-slate-400">Loading transaction...</p>
         </div>
       );
     }
 
-    const value = formData[col.key] ?? "";
-
-    if (col.type === "bank") {
-      const currentBankId = (() => {
-        const v = formData[col.key];
-        if (!v) return "";
-        const byId = banks.find(b => b._id === v);
-        if (byId) return byId._id;
-        const byName = banks.find(b =>
-          b.name.toLowerCase().includes(String(v).toLowerCase()) ||
-          String(v).toLowerCase().includes(b.name.toLowerCase())
-        );
-        return byName ? byName._id : "";
-      })();
-      return (
-        <select value={currentBankId} onChange={e => handleChange(col.key, e.target.value)} className={baseInputClass}>
-          <option value="">— No Bank —</option>
-          {banks.map(b => <option key={b._id} value={b._id}>{b.name}</option>)}
-        </select>
-      );
-    }
-    if (col.type === "status") return (
-      <select value={value} onChange={e => handleChange(col.key, e.target.value)} className={baseInputClass}>
-        <option value="">—</option>
-        {statuses.map(s => <option key={s._id} value={s._id}>{s.label}</option>)}
-      </select>
-    );
-    if (col.type === "paymentStatus") return (
-      <select value={value} onChange={e => handleChange(col.key, e.target.value)} className={baseInputClass}>
-        <option value="">—</option>
-        {paymentStatuses.map(s => <option key={s._id} value={s._id}>{s.label}</option>)}
-      </select>
-    );
-    if (col.type === "diamondType") return (
-      <select value={value} onChange={e => handleChange(col.key, e.target.value)} className={baseInputClass}>
-        <option value="">— Select Type —</option>
-        {diamondTypes.length > 0
-          ? diamondTypes.map(dt => <option key={dt._id} value={dt.label}>{dt.label}</option>)
-          : (
-            <>
-              <option value="Certified">Certified</option>
-              <option value="Miele">Miele</option>
-              <option value="Noncertified">Noncertified</option>
-              <option value="Natural">Natural</option>
-              <option value="Produced">Produced</option>
-            </>
-          )
-        }
-      </select>
-    );
-    if (col.type === "date") {
-      const dv = value ? String(value).split("T")[0] : "";
-      return <input type="date" value={dv} onChange={e => handleChange(col.key, e.target.value)} className={baseInputClass} />;
-    }
-    if (col.type === "number") return (
-      <input type="number" step="any" value={value ?? ""}
-        placeholder={col.hint || ""}
-        onChange={e => handleChange(col.key, e.target.value === "" ? "" : e.target.value)}
-        className={baseInputClass} />
-    );
-    return <input type="text" value={value} onChange={e => handleChange(col.key, e.target.value)} className={baseInputClass} />;
-  };
-
-  const activeKeys = EDIT_TABS.find(t => t.id === activeTab)?.keys ?? [];
-
-  const subtitle = selectedBank
-    ? <><span className="text-blue-600 font-semibold">{selectedBank.name}</span> · USD→INR: <span className="text-slate-600 font-medium">{selectedBank.usdToInr}</span> · INR→RUB: <span className="text-slate-600 font-medium">{selectedBank.inrToRub}</span></>
-    : formData
-      ? <>SKU: <span className="text-blue-600 font-semibold">{formData.skuNo || "—"}</span> · Weight: <span className="text-slate-600 font-medium">{formData.weight || "—"} ct</span></>
-      : "Loading...";
-
-  const summaryCards = [
-    { label: "Buy Total", val: `$${fmt(preview.buyPriceTotal)}`, colorClass: "text-slate-900" },
-    { label: "Base INR", val: `₹${fmt(preview.basePriceINR, 0)}`, colorClass: "text-slate-900" },
-    { label: "Market P/L", val: `${(preview.marketPL ?? 0) >= 0 ? "↑" : "↓"} ₹${fmt(Math.abs(preview.marketPL ?? 0), 0)}`, colorClass: (preview.marketPL ?? 0) >= 0 ? "text-green-600" : "text-red-600" },
-    { label: "Price (RUB)", val: preview.priceRUB == null ? "—" : `₽${fmt(preview.priceRUB, 0)}`, colorClass: "text-slate-900" },
-  ];
-
-  if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 font-[DM_Sans,sans-serif] flex flex-col items-center justify-center">
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-        <div style={{ animation: "spin 0.7s linear infinite" }} className="w-8 h-8 border-[3px] border-blue-600 border-t-transparent rounded-full mb-3" />
-        <p className="m-0 text-[13px] text-slate-400">Loading transaction...</p>
+      <div className="min-h-screen bg-slate-50 font-[DM_Sans,sans-serif]">
+        {/* Top bar */}
+        <div className="bg-white border-b border-slate-200 px-7 flex items-center justify-between h-[60px] sticky top-0 z-30 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate("/transactions")}
+              className="flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition-colors text-slate-500"
+            >
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <div className="w-px h-5 bg-slate-200" />
+            <div>
+              <div className="text-[17px] font-bold text-slate-900 leading-tight">Edit Transaction</div>
+              <div className="text-[11px] text-slate-400">{subtitle}</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={() => navigate("/transactions")}
+              className="px-[18px] py-2 text-[13px] font-medium text-slate-600 bg-white border border-slate-200 rounded-lg cursor-pointer font-[DM_Sans,sans-serif] hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="px-[18px] py-2 text-[13px] font-semibold text-white bg-blue-600 border-none rounded-lg cursor-pointer font-[DM_Sans,sans-serif] hover:bg-blue-700 disabled:opacity-50"
+            >
+              {saving ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="bg-white border-b border-slate-100 px-7 flex">
+          {EDIT_TABS.map(tab => (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+              className={`border-none bg-transparent cursor-pointer px-4 py-2.5 text-[13px] font-medium font-[DM_Sans,sans-serif] transition-colors duration-150 border-b-2 ${activeTab === tab.id ? "text-slate-900 border-blue-600" : "text-slate-400 border-transparent"}`}>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Body */}
+        <div className="px-7 py-6">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-6">
+            <div className="grid grid-cols-4 gap-4">
+              {activeKeys.map(key => {
+                const col = COL_MAP[key];
+                if (!col) return null;
+                return (
+                  <div key={key}>
+                    <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 uppercase tracking-[0.04em]">
+                      {col.label}
+                      {col.type === "preview" && <span className="text-slate-300 font-normal ml-0.5 normal-case text-[10px]"> (auto)</span>}
+                    </label>
+                    {renderField(col)}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Summary cards */}
+            <div className="grid grid-cols-4 gap-3 mt-6">
+              {summaryCards.map(s => (
+                <div key={s.label} className="bg-slate-50 rounded-xl px-4 py-3 text-center border border-slate-100">
+                  <p className="m-0 mb-1 text-[11px] text-slate-400 font-medium uppercase tracking-[0.04em]">{s.label}</p>
+                  <p className={`m-0 text-[15px] font-bold ${s.colorClass}`}>{s.val}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
-
-  return (
-    <div className="min-h-screen bg-slate-50 font-[DM_Sans,sans-serif]">
-      {/* Top bar */}
-      <div className="bg-white border-b border-slate-200 px-7 flex items-center justify-between h-[60px] sticky top-0 z-30 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate("/transactions")}
-            className="flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition-colors text-slate-500"
-          >
-            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <div className="w-px h-5 bg-slate-200" />
-          <div>
-            <div className="text-[17px] font-bold text-slate-900 leading-tight">Edit Transaction</div>
-            <div className="text-[11px] text-slate-400">{subtitle}</div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2.5">
-          <button
-            onClick={() => navigate("/transactions")}
-            className="px-[18px] py-2 text-[13px] font-medium text-slate-600 bg-white border border-slate-200 rounded-lg cursor-pointer font-[DM_Sans,sans-serif] hover:bg-slate-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="px-[18px] py-2 text-[13px] font-semibold text-white bg-blue-600 border-none rounded-lg cursor-pointer font-[DM_Sans,sans-serif] hover:bg-blue-700 disabled:opacity-50"
-          >
-            {saving ? "Saving..." : "Save Changes"}
-          </button>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="bg-white border-b border-slate-100 px-7 flex">
-        {EDIT_TABS.map(tab => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-            className={`border-none bg-transparent cursor-pointer px-4 py-2.5 text-[13px] font-medium font-[DM_Sans,sans-serif] transition-colors duration-150 border-b-2 ${activeTab === tab.id ? "text-slate-900 border-blue-600" : "text-slate-400 border-transparent"}`}>
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Body */}
-      <div className="px-7 py-6">
-        <div className="bg-white rounded-xl border border-slate-200 shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-6">
-          <div className="grid grid-cols-4 gap-4">
-            {activeKeys.map(key => {
-              const col = COL_MAP[key];
-              if (!col) return null;
-              return (
-                <div key={key}>
-                  <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 uppercase tracking-[0.04em]">
-                    {col.label}
-                    {col.type === "preview" && <span className="text-slate-300 font-normal ml-0.5 normal-case text-[10px]"> (auto)</span>}
-                  </label>
-                  {renderField(col)}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Summary cards */}
-          <div className="grid grid-cols-4 gap-3 mt-6">
-            {summaryCards.map(s => (
-              <div key={s.label} className="bg-slate-50 rounded-xl px-4 py-3 text-center border border-slate-100">
-                <p className="m-0 mb-1 text-[11px] text-slate-400 font-medium uppercase tracking-[0.04em]">{s.label}</p>
-                <p className={`m-0 text-[15px] font-bold ${s.colorClass}`}>{s.val}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}

@@ -139,7 +139,13 @@ const CURRENCY_KEYS = new Set([
   "bonusAmount", "bonusInLocalCurrency", "marginality", "actualMarkup",
 ]);
 
-function formatCell(key, value, diamondTypeStyles) {
+function formatCell(key, value, diamondTypeStyles, row) {
+  if (key === "priceRUB") {
+    const raw = row?.sellPriceLocalCurrency;
+    if (raw == null || raw === "") return <span className="text-slate-300">—</span>;
+    const rounded = Math.ceil(raw / 100) * 100;
+    return <span className="tabular-nums text-xs">{rounded.toLocaleString("en-IN")}</span>;
+  }
   if (value === null || value === undefined || value === "") return <span className="text-slate-300">—</span>;
   if (key === "status") return <Badge value={value} styleMap={STATUS_STYLES} />;
   if (key === "paymentStatus") return <Badge value={value} styleMap={PAYMENT_STYLES} />;
@@ -161,7 +167,7 @@ function formatCell(key, value, diamondTypeStyles) {
     return <span className="tabular-nums text-xs">{value.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</span>;
   if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value))
     return (
-      <span className="text-xs">
+      <span className="text-xs">      
         {new Date(value).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
       </span>
     );
@@ -909,7 +915,7 @@ export default function Sample() {
                           <td key={col.key}
                             className="px-2  border-r border-slate-100 whitespace-nowrap text-slate-700 cursor-pointer"
                             onClick={() => isSelected ? toggleRow(row._id, { stopPropagation: () => { } }) : navigate(`/transactions/${row._id}/edit`)}>
-                            {formatCell(col.key, row[col.key], diamondTypeStyles)}
+                            {formatCell(col.key, row[col.key], diamondTypeStyles, row)}
                           </td>
                         ))}
                       </tr>
@@ -983,4 +989,4 @@ export default function Sample() {
       />
     </div>
   );
-}
+} 
