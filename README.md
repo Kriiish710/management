@@ -54,7 +54,6 @@ This application is designed to manage purchasing, pricing, inventory, and sales
 | PDF generation | jsPDF + jspdf-autotable (lazy CDN load) |
 | Backend framework | Express v5 |
 | Database | MongoDB via Mongoose v9 |
-| Dev server | Nodemon |
 
 ---
 
