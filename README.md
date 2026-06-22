@@ -1,4 +1,4 @@
-# 💎 Diamond Management System
+# Diamond Management System
 
 A full-stack diamond inventory and trading management platform built with **React + Vite** (frontend) and **Node.js + Express + MongoDB** (backend). It tracks the complete lifecycle of a diamond — from purchase through pricing, inventory, sale, and P&L reporting — with multi-currency support (USD, INR, RUB) and bulk Excel import/export.
 
@@ -16,15 +16,12 @@ A full-stack diamond inventory and trading management platform built with **Reac
 - [Business Logic & Calculations](#business-logic--calculations)
 - [Excel Import / Export](#excel-import--export)
 - [Getting Started](#getting-started)
-- [Environment Variables](#environment-variables)
-- [Deployment](#deployment)
-- [Known Limitations & Notes](#known-limitations--notes)
 
 ---
 
 ## Overview
 
-This application is designed for diamond traders who need to manage purchasing, pricing, inventory, and sales across multiple currencies (primarily USD, INR, and RUB). Every diamond starts as a **Transaction** — a single flat document containing all relevant data — which is simultaneously mirrored into five normalised sub-documents (Diamond, Purchase, Pricing, Sale, PL) for structured querying.
+This application is designed to manage purchasing, pricing, inventory, and sales across multiple currencies (primarily USD, INR, and RUB). Every diamond starts as a **Transaction** — a single flat document containing all relevant data — which is simultaneously mirrored into five normalised sub-documents (Diamond, Purchase, Pricing, Sale, PL) for structured querying.
 
 ---
 
@@ -44,31 +41,20 @@ This application is designed for diamond traders who need to manage purchasing, 
 - **Column Reordering** — Drag-and-drop table headers to reorder columns (persisted in component state for the session).
 - **Row Selection** — Checkbox-based multi-select with page-level select-all; floating action bar for exporting selected rows.
 
-### UX Details
-- Responsive sidebar with collapse/expand.
-- DM Sans font throughout.
-- Tailwind CSS v4 utility classes.
-- Sticky table headers and sticky row-number + checkbox columns.
-- Live preview of calculated fields while editing a transaction (no round-trip to the server required for previews).
-- Import progress bar with per-row status.
-
 ---
 
 ## Tech Stack
 
 | Layer | Technology |
 |---|---|
-| Frontend framework | React 19 + Vite 8 |
+| Frontend framework | React 19 + Vite  |
 | Styling | Tailwind CSS v4 (`@tailwindcss/vite`) |
 | Routing | React Router DOM v7 |
-| Icons | Lucide React v1 |
 | Excel parsing/writing | SheetJS (xlsx) loaded from CDN |
 | PDF generation | jsPDF + jspdf-autotable (lazy CDN load) |
 | Backend framework | Express v5 |
 | Database | MongoDB via Mongoose v9 |
 | Dev server | Nodemon |
-| Environment | dotenv |
-| CORS | cors |
 
 ---
 
@@ -121,7 +107,6 @@ This application is designed for diamond traders who need to manage purchasing, 
 │   │   └── transactionRoutes.js
 │   ├── index.js                       # Express app entry point
 │   ├── package.json
-│   └── .env                           # (not committed) MONGO_URI, PORT
 │
 ├── frontend/
 │   ├── components/
@@ -335,9 +320,6 @@ actualMarkup         = (saleBaseINR / basePriceINR × 100) - 100
 bonusAmount          = (actualPriceINR / 100) × bonusPoints
 bonusInLocalCurrency = bonusAmount / bonusRate (or inrToRub)
 ```
-
-> **Note:** `markup` in the Create form is treated as a percentage (e.g., `20` = 20%), converted to a decimal factor `1 + markup/100`. In the Edit form, it's stored/passed as-is. There is a subtle discrepancy between the two forms worth reviewing if values seem off.
-
 ---
 
 ## Excel Import / Export
@@ -387,7 +369,6 @@ Expected column order (0-indexed):
 | 55 | bonusPoints |
 | 57 | bonusRate |
 
-Rows without a value in column 1 (skuNo) are skipped. Excel serial dates are converted to JS Date objects.
 
 ### Export
 Both Excel and PDF exports use `EXPORT_COLUMNS` (56 columns), pulling values from the flat transaction object. Populated sub-documents (objects with `.label` or `.name`) are rendered as their label/name string. Dates are formatted as `DD Mon YYYY`.
@@ -399,21 +380,11 @@ Both Excel and PDF exports use `EXPORT_COLUMNS` (56 columns), pulling values fro
 
 ## Getting Started
 
-### Prerequisites
-- Node.js ≥ 20
-- MongoDB (local or Atlas)
-
 ### Backend Setup
 
 ```bash
 cd backend
 npm install
-```
-
-Create a `.env` file:
-```
-MONGO_URI=mongodb://localhost:27017/diamond-management
-PORT=5000
 ```
 
 Start the server:
@@ -422,8 +393,6 @@ npm run dev      # nodemon (hot reload)
 npm start        # plain node
 ```
 
-The API will be available at `http://localhost:5000/api`.
-
 ### Frontend Setup
 
 ```bash
@@ -431,17 +400,11 @@ cd frontend
 npm install
 ```
 
-The `.env.development` file already sets:
-```
-VITE_API_URL=http://localhost:5000/api
-```
-
 Start the dev server:
 ```bash
 npm run dev
 ```
 
-Open `http://localhost:5173`.
 
 ### Build for Production
 
@@ -452,22 +415,12 @@ npm run build    # outputs to frontend/dist/
 
 ---
 
-## Environment Variables
-
-| Variable | Location | Description |
-|---|---|---|
-| `MONGO_URI` | `backend/.env` | MongoDB connection string |
-| `PORT` | `backend/.env` | Express server port (default: 5000) |
-| `VITE_API_URL` | `frontend/.env.*` | Backend API base URL (must include `/api`) |
-
----
-
 ## Deployment
 
 The project is configured for deployment on **Render**:
 
-- **Backend**: Web service running `npm start` from the `backend/` directory. Set `MONGO_URI` and `PORT` in Render environment variables.
-- **Frontend**: Static site built from `frontend/` with `npm run build`. The `public/_redirects` file (`/* /index.html 200`) handles client-side routing.
+- **Backend**: Web service running `npm start` from the `backend/` directory. 
+- **Frontend**: Static site built from `frontend/` with `npm run build`. 
 
 The CORS configuration in `backend/index.js` explicitly allows:
 ```
@@ -475,23 +428,6 @@ https://management-frontend-2pcq.onrender.com
 http://localhost:5173
 ```
 
-Add your own frontend URL here if deploying elsewhere.
-
----
-
-## Known Limitations & Notes
-
-1. **Markup formula inconsistency** — `CreateTransactionPage` treats `markup` as a percentage (divides by 100 internally), while `EditTransactionPage` and the backend use the raw stored value directly. Verify the intended behaviour and standardise.
-
-2. **Direction filter (Credit/Debit)** — The filter button renders Debit/Credit direction buttons but `Sample.jsx` does not filter rows by the `direction` key — it's captured in state but not applied in the `.filter()` pipeline. This is effectively a no-op at present.
-
-3. **No authentication** — There is no login, session management, or role-based access control. All API endpoints are publicly accessible.
-
-4. **Client-side only pagination/sort/filter** — All transactions are fetched in one request and filtered/sorted in the browser. This will not scale well beyond a few thousand records. For production scale, server-side pagination and filtering should be implemented.
-
-5. **`priceRUB` display vs. storage** — The table displays `ceil(sellPriceLocalCurrency / 100) * 100` live, but the `priceRUB` field stored in the database is calculated differently by the backend (`transactionController.js`). The two may diverge if `sellPriceLocalCurrency` is updated outside the standard flow.
-
-6. **Measurement parsing** — The import function parses `measurement` from column 43 (format `L×W×H`). If this column is empty, `length`/`width`/`height` will be undefined. Direct `length`, `width`, `height` columns take precedence when creating via form.
 
 7. **Linked document cascade** — On transaction delete, `deleteLinkedDocuments` finds the Diamond by `skuNo` and deletes all linked PL, Pricing, Sale, Purchase, Diamond records. If the `skuNo` doesn't exist in the Diamond collection (e.g., if Diamond creation failed on import), deletion is silently skipped with a console warning.
 
