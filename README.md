@@ -2,7 +2,7 @@
 
 A full-stack diamond inventory and trading management platform built with **React + Vite** (frontend) and **Node.js + Express + MongoDB** (backend). It tracks the complete lifecycle of a diamond — from purchase through pricing, inventory, sale, and P&L reporting — with multi-currency support (USD, INR, RUB) and bulk Excel import/export.
 
----
+--
 
 ## Table of Contents
 
